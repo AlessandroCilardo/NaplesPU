@@ -1,0 +1,96 @@
+The nu+ manycore is a parametrizable regular mesh Network on Chip (NoC) of configurable tile. Each nu+ tile has the same basic components, it provides a configrable GPU-like open-source softcore meant to be used as a configurable FPGA overlay. This HPC-oriented accelerator merges the SIMT paradigm with vector processor model. Futhermore, each tile has a Cache Controller and a Directory Controller, those components handle data coherence between different cores in different tiles. On top of the customized hardware core, we are also developing a nu+ compiler backend relying on the LLVM infrastructure.
+
+The core is based on a RISC in-order pipeline. Its control unit is intentionally kept lightweight. The architecture masks memory and operation latencies by heavily relying on hardware multithreading. By ensuring a light control logic, the core can devote most of its resources for accelerating computing in highly data-parallel kernels. In the hardware multithreading \nuplus architecture, each hardware thread has its own PC, register file, and control registers. The number of threads is user configurable. A \nuplus hardware thread is equivalent to a wavefront in the AMD terminology and a CUDA warp in the NVIDIA terminology. The processor uses a deep pipeline to improve clock speed.
+
+
+-- Getting started -- 
+
+This section shows how to approach with nu+ project for simulating or implementing a kernel for nu+ architecture. Kernel means a complex application such as matrix multiplication, transpose of a matrix or similar that is written in a high-level programming language, for example, C/C++.
+
+- Required software
+
+Simulation or implementation of any kernel relies on the following dependencies:
+
+    Git
+    Xilinx Vivado 2018.2 or ModelSim (e.g. Questa Sim-64 vsim 10.6c_1)
+    nu+ toolchain
+
+- Building process
+
+The first step is to install a toolchain. Please refer to toolchain/README.
+
+The following folders are used in simulation:
+
+    software: example kernels
+    tools: simulation scripts
+
+- Simulate a kernel
+
+Three different ways:
+
+    1 - starting test.sh script
+    2 - starting setup_project.sh from the root folder of the repository, it uses Vivado;
+    3 - starting simulate.sh from the root folder of the repository, it uses ModelSim.
+
+First of all, source Vivado or ModelSim in the shell. In Ubuntu Linux environment, e.g. if the simulator is Vivado, run the following command:
+
+    $ source Vivado/folder/location/settingXX.sh
+
+where XX depends on the installed version of Vivado (32 o 64 bit).
+
+1 - test.sh script
+
+Type following command in the nuplus/tools folder:
+
+    $ ./test.sh [option]
+
+Options are:
+
+    -h, --help show this help
+    -t, --tool=vsim or vivado specify the tool to use, default: vsim
+    -cn, --core-numb=VALUE specify the core number, default: 1
+    -tn, --thread-numb=VALUE specify the thread number, default: 8
+
+This script starts kernels defined in an array in the script. The test.sh script first compile kernels and then runs them on both nu+ and x86 architecture. Once the simulation is terminated, for each kernel, results of both execution are compared by a Python script for verifying the correctness of results.
+
+In folder tools, a log file is generated, called cosim.log, where are stored all information about simulation.
+
+2 - setup_project.sh script
+
+Type following command in the nuplus folder:
+
+    $ tools/vivado/setup_project.sh [option]
+
+Options are:
+
+    -h, --help show this help
+    -k, --kernel=KERNEL_NAME specify the kernel to use
+    -s, --single-core select the single core configuration, by default the manycore is selected
+    -c, --core-mask=VALUE specify the core activation mask, default: 1
+    -t, --thread-mask=VALUE specify the thread activation mask, default FF
+    -m, --mode=gui or batch specify the tool mode, it can run in either gui or batch mode, default: gui
+
+This script starts the kernel specified in the command. The kernel has to be located in the software/kernels/ folder, and has to be compiled first running make. Simulation is performed by Vivado:
+
+    tools/vivado/setup_project.sh -k mmsc -c 3 -t $(( 16#F )) -m gui
+
+About the parameters:
+
+The third (-c) is a one-hot mask that states which core are active: 3 is (11)2, hence Core 0 and 1. The thread mask parameter (-t) stores a one-hot mask that states which thread are active in each core: F is (00001111)2 so 4 threads active. The -m option sets the tool mode.
+
+3 - simulate.sh script
+
+Type following command in the nuplus root folder:
+
+    $ tools/modelsim/simulate.sh [option]
+
+Options are:
+
+    -h, --help show this help
+    -k, --kernel=KERNEL_NAME specify the kernel to use
+    -s, --single-core select the single core configuration, by default the manycore is selected
+    -c, --core-mask=VALUE specify the core activation mask, default: 1
+    -t, --thread-mask=VALUE specify the thread activation mask, default FF
+    -m, --mode=gui or batch specify the tool mode, it can run in either gui or batch mode, default: gui
+
+This script starts the kernel specified in the command. Simulation is performed in ModelSim. 

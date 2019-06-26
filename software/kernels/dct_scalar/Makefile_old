@@ -1,0 +1,19 @@
+TOPDIR=../../
+
+include $(TOPDIR)/misc/NuPlus.mk
+
+SRCS=dct_scalar.cpp
+
+OBJS= $(SRCS_TO_OBJS) $(TOPDIR)/libs/crt0.o $(TOPDIR)/libs/vectors.o
+DEPS=$(SRCS_TO_DEPS)
+
+$(OBJ_DIR)/$(basename($(SRCS))).hex: $(OBJS)
+	$(LD) -o $(OBJ_DIR)/$(notdir $(basename $<)).elf $(LDFLAGS) $(OBJS) $(AFLAGS)
+	$(ELF2HEX) -o $(OBJ_DIR)/$(notdir $(basename $<)).hex $(OBJ_DIR)/$(notdir $(basename $<)).elf
+	$(OBJDUMP) -disassemble-all $(OBJ_DIR)/$(notdir $(basename $<)).elf > $(OBJ_DIR)/$(notdir $(basename $<)).objdump
+	
+
+clean:
+	rm -rf $(OBJ_DIR)
+
+-include $(DEPS)

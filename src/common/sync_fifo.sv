@@ -1,0 +1,71 @@
+`timescale 1ns / 1ps
+module sync_fifo #(
+	parameter WIDTH                  = 64,
+	parameter SIZE                   = 4,
+	parameter ALMOST_FULL_THRESHOLD  = SIZE,
+	parameter ALMOST_EMPTY_THRESHOLD = 1
+) (
+	input                      clk,
+	input                      reset,
+	input                      flush_en,
+	output logic               full,
+	output logic               almost_full,
+	input                      enqueue_en,
+	input        [WIDTH - 1:0] value_i,
+	output logic               empty,
+	output logic               almost_empty,
+	input                      dequeue_en,
+	output       [WIDTH - 1:0] value_o
+);
+
+	localparam PTR_WIDTH = $clog2( SIZE     );
+	localparam CNT_WIDTH = $clog2( SIZE + 1 );
+
+	// Pointers management
+	logic [PTR_WIDTH - 1:0] head;
+	logic [PTR_WIDTH - 1:0] tail;
+
+	// Internal storage
+	logic [CNT_WIDTH - 1:0] cnt;
+	logic [WIDTH - 1 : 0]   mem  [SIZE];
+
+	assign almost_full  = cnt >= ( PTR_WIDTH + 1 )'( ALMOST_FULL_THRESHOLD );
+	assign almost_empty = cnt <= ( PTR_WIDTH + 1 )'( ALMOST_EMPTY_THRESHOLD );
+	assign full         = cnt == CNT_WIDTH'( SIZE );
+	assign empty        = cnt == 0;
+
+	assign value_o      = mem[head];
+
+	always_ff @( posedge clk, posedge reset ) begin
+		if ( reset ) begin
+			head <= 0;
+			tail <= 0;
+			cnt  <= 0;
+		end
+		else begin
+			if ( flush_en ) begin
+				head <= 0;
+				tail <= 0;
+				cnt  <= 0;
+			end
+			else begin
+				if ( enqueue_en ) begin
+					assert ( !full ) else $fatal( 0, "Cannot enqueue on full FIFO!" );
+					tail      <= tail + 1;
+					mem[tail] <= value_i;
+				end
+
+				if ( dequeue_en ) begin
+					assert ( !empty ) else $fatal( 0, "Cannot dequeue from empty FIFO!" );
+					head <= head + 1;
+				end
+
+				if ( enqueue_en && !dequeue_en )
+					cnt <= cnt + 1;
+				else if ( dequeue_en && !enqueue_en )
+					cnt <= cnt - 1;
+			end
+		end
+	end
+
+endmodule
