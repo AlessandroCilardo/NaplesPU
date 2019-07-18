@@ -1,3 +1,32 @@
+//        Copyright 2019 NaplesPU
+//   
+//   	 
+//   Redistribution and use in source and binary forms, with or without modification,
+//   are permitted provided that the following conditions are met:
+//   
+//   1. Redistributions of source code must retain the above copyright notice,
+//      this list of conditions and the following disclaimer.
+//   
+//   2. Redistributions in binary form must reproduce the above copyright notice,
+//      this list of conditions and the following disclaimer in the documentation
+//      and/or other materials provided with the distribution.
+//   
+//   3. Neither the name of the copyright holder nor the names of its contributors
+//      may be used to endorse or promote products derived from this software
+//      without specific prior written permission.
+//   
+//      
+//   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+//   ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+//   WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+//   IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+//   INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+//   BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+//   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+//   LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+//   OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+//   OF THE POSSIBILITY OF SUCH DAMAGE.
+
 `timescale 1ns / 1ps
 `include "../include/npu_user_defines.sv"
 `include "../include/npu_defines.sv"
@@ -186,7 +215,6 @@ module tb_n2m #(
 	always #5 clk = ~clk;
 
 	initial begin
-		//indirizzo: 21 bit di tag; 5 bit di index; 6 bit di offset
 		
 		ni_forwarded_request_valid = 1'b0;
 		ni_response_valid = 1'b0;
@@ -213,11 +241,11 @@ module tb_n2m #(
 				automatic message_forwarded_requests_enum_t     packet_type         = FWD_GETM;
 				automatic dcache_address_t 					    memory_address 		= $urandom(i);
 				submit_fwd_msg( 
-					.packet_type    ( packet_type                                  ), //FIXME: metterlo random
-					.memory_address ( memory_address                               ), //numero random su 32 bit con seed=10
-					.source         ( '{$urandom_range(1,0), $urandom_range(1,0)}  ), //e.g. [1,0]
-                    .is_uncoherent  ( '{$urandom_range(1,0)}                       ), // t/f
-                    .requestor      ( requestor_type_t.first()                     )  //FIXME: metterlo random
+					.packet_type    ( packet_type                                  ), 
+					.memory_address ( memory_address                               ), 
+					.source         ( '{$urandom_range(1,0), $urandom_range(1,0)}  ), 
+                    .is_uncoherent  ( '{$urandom_range(1,0)}                       ), 
+                    .requestor      ( requestor_type_t.first()                     )  
 				);
 
 				/*****************
@@ -230,7 +258,6 @@ module tb_n2m #(
 				*****************/
 			end else
 			begin
-				//richiesta di response
 				//$display("[Time %t] [TESTBENCH] Generating request #%3d [#%3d of response]", $time(), i, cnt_res);
 				
 				automatic message_responses_enum_t 			packet_type 		= WB;
@@ -271,15 +298,6 @@ module tb_n2m #(
 	   requestor_type_t 					requestor 		= DCACHE
 	);
 
-		/*
-		tipi di fwd:
-			FWD_GETS  
-			FWD_GETM  
-			INV        //non può arrivare al mc
-			BACK_INV   //non può arrivare al mc
-			FWD_FLUSH  //non può arrivare al mc
-		*/
-
 		assert(packet_type == FWD_GETS || packet_type == FWD_GETM) else 
 		begin
 			$error("[Time %t] [TESTBENCH] Trying to issue a fwd message of type %s. Expected type is FWD-GETS or FWD-GETM", $time(), packet_type.name);
@@ -316,15 +334,6 @@ module tb_n2m #(
 	   dcache_store_mask_t 				dirty_mask 		= {`DCACHE_WIDTH/8{1'b1}}
 
 	);
-
-		/*
-		tipi di response:
-			PUT_ACK  //non può arrivare al mc
-			DATA   	 //non può arrivare al mc
-			INV_ACK  //non può arrivare al mc
-			WB      
-			MC_ACK 	//viene *generato* dal mc
-		*/
 
 		assert(packet_type == WB) else 
 		begin

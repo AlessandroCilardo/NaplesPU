@@ -1,22 +1,21 @@
-TOPDIR=../../
-NUP_DIR?=/usr/local/llvm-nuplus
+NPU_DIR?=$(MANGO_ROOT)/usr/local/llvm-npu
 
 CORE_NUMB?=1
 THREAD_NUMB?=8
 
 KFLAGS=-DCORE_NUMB=$(CORE_NUMB) -DTHREAD_NUMB=$(THREAD_NUMB)
 
-include $(NUP_DIR)/misc-nuplus/NuPlus.mk
+include $(NPU_DIR)/misc-npu/NaplesPU.mk
 
 SRCS=dct_scalar.cpp
 
-OBJS= $(SRCS_TO_OBJS) $(NUP_DIR)/libs-nuplus/crt0.o $(NUP_DIR)/libs-nuplus/vectors.o
+OBJS= $(SRCS_TO_OBJS) $(NPU_DIR)/libs-npu/crt0.o $(NPU_DIR)/libs-npu/vectors.o
 DEPS=$(SRCS_TO_DEPS)
 
 $(OBJ_DIR)/$(basename($(SRCS))).hex: $(OBJS)
 	$(LD) -o $(OBJ_DIR)/$(notdir $(basename $<)).elf $(LDFLAGS) $(OBJS) $(AFLAGS)
 	$(ELF2HEX) -o $(OBJ_DIR)/$(notdir $(basename $<)).hex $(OBJ_DIR)/$(notdir $(basename $<)).elf
-	$(OBJDUMP) -disassemble-all $(OBJ_DIR)/$(notdir $(basename $<)).elf > $(OBJ_DIR)/$(notdir $(basename $<)).objdump
+	$(OBJDUMP) -d -s $(OBJ_DIR)/$(notdir $(basename $<)).elf > $(OBJ_DIR)/$(notdir $(basename $<)).objdump
 	
 
 clean:

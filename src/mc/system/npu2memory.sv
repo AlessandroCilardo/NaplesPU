@@ -1,3 +1,32 @@
+//        Copyright 2019 NaplesPU
+//   
+//   	 
+//   Redistribution and use in source and binary forms, with or without modification,
+//   are permitted provided that the following conditions are met:
+//   
+//   1. Redistributions of source code must retain the above copyright notice,
+//      this list of conditions and the following disclaimer.
+//   
+//   2. Redistributions in binary form must reproduce the above copyright notice,
+//      this list of conditions and the following disclaimer in the documentation
+//      and/or other materials provided with the distribution.
+//   
+//   3. Neither the name of the copyright holder nor the names of its contributors
+//      may be used to endorse or promote products derived from this software
+//      without specific prior written permission.
+//   
+//      
+//   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+//   ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+//   WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+//   IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+//   INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+//   BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+//   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+//   LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+//   OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+//   OF THE POSSIBILITY OF SUCH DAMAGE.
+
 `timescale 1ns / 1ps
 `include "npu_user_defines.sv"
 `include "npu_debug_log.sv"
@@ -40,8 +69,8 @@ module npu2memory #(
 		input  logic                                                       ni_response_network_available,
 
 		// RW requests to MEM NI
-		output logic                         [MEM_ADDRESS_WIDTH - 1 : 0] n2m_request_address,
-		output logic                         [MEM_DATA_WIDTH - 1 : 0]    n2m_request_data,
+		output logic                         [MEM_ADDRESS_WIDTH - 1 : 0]   n2m_request_address,
+		output logic                         [MEM_DATA_WIDTH - 1 : 0]      n2m_request_data,
 		output logic                                           [63 : 0]    n2m_request_dirty_mask,
 		output logic                                                       n2m_request_read,
 		output logic                                                       n2m_request_write,
@@ -51,14 +80,16 @@ module npu2memory #(
 
 		// Read responses from MEM NI
 		input  logic                                                       m2n_response_valid,
-		input  logic                         [MEM_ADDRESS_WIDTH - 1 : 0] m2n_response_address,
-		input  logic                         [MEM_DATA_WIDTH - 1 : 0]    m2n_response_data,
+		input  logic                         [MEM_ADDRESS_WIDTH - 1 : 0]   m2n_response_address,
+		input  logic                         [MEM_DATA_WIDTH - 1 : 0]      m2n_response_data,
 		output logic                                                       n2m_avail
 	);
 
 	localparam NUM_REQ = 2;
 	localparam FIFO_LENGTH = 16;
 
+    logic                                                    accept_fwd_req;
+    logic                                                    accept_resp;
 	logic                                                    request_is_valid, can_issue_response, pending_resp_fifo;
 	logic                                                    request_is_read, request_is_write;
 	logic                         [NUM_REQ - 1 : 0]          request_oh;
@@ -134,13 +165,6 @@ module npu2memory #(
 	always_ff @( posedge clk ) begin
 		if ( ~reset )
 		begin
-			assert( !(mc_response_fifo_full & m2n_response_valid) )
-			else begin
-				$error("[Time %t] [MC] Trying to enqueue a response from Memory, but the FIFO is full. Response dump = %h", 
-				$time(),
-				m2n_response_data_swap
-				);
-			end
 `ifdef DISPLAY_MEMORY_CONTROLLER
 			if ( m2n_response_valid & ~mc_response_fifo_full ) begin
 				$display( "[Time %t] [MC] Response from memory enqueued", $time() );
@@ -214,7 +238,6 @@ module npu2memory #(
 		end
 	end
 	
-
 //  -----------------------------------------------------------------------
 //  -- NaplesPU to Memory - FIFOs
 //  -----------------------------------------------------------------------
@@ -222,7 +245,7 @@ module npu2memory #(
 	sync_fifo #(
 		.WIDTH                ( $bits( coherence_response_message_t ) ),
 		.SIZE                 ( FIFO_LENGTH                           ),
-		.ALMOST_FULL_THRESHOLD( FIFO_LENGTH                           )
+		.ALMOST_FULL_THRESHOLD( FIFO_LENGTH - 1                       )
 	)
 	response_fifo (
 		.clk         ( clk                      ),
@@ -230,7 +253,7 @@ module npu2memory #(
 		.flush_en    ( 1'b0                     ),
 		.full        (                          ),
 		.almost_full ( response_fifo_full       ),
-		.enqueue_en  ( ni_response_valid        ),
+		.enqueue_en  ( accept_resp              ),
 		.value_i     ( ni_response              ),
 		.empty       ( response_fifo_empty      ),
 		.almost_empty(                          ),
@@ -238,24 +261,13 @@ module npu2memory #(
 		.value_o     ( pending_response_out     )
 	);
 
+    assign accept_resp            = ni_response_valid & ~response_fifo_full;
 	assign n2m_response_consumed  = ~response_fifo_full & ni_response_valid;
 	assign n2m_response_available = ~response_fifo_full;
 	
 	always_ff @( posedge clk ) begin
 		if ( ~reset )
 		begin
-			assert( !(response_fifo_full & ni_response_valid) )
-			else begin
-				$error("[Time %t] [MC] Trying to enqueue a response in MC, but the FIFO is full. Response details: response type = %s ; address=%8h ; data=%h ; source tile=[%1d, %1d]", 
-				$time(),
-				ni_response.packet_type.name,
-				ni_response.memory_address,
-				ni_response.data,
-				ni_response.source.x,
-				ni_response.source.y
-				);
-			end
-
 `ifdef DISPLAY_MEMORY_CONTROLLER
 			if ( n2m_response_consumed ) begin
 				$display( "[Time %t] [MC] Response of type %s equeued - Address: %h", $time(), ni_response.packet_type.name, ni_response.memory_address );
@@ -269,7 +281,7 @@ module npu2memory #(
 	sync_fifo #(
 		.WIDTH                ( $bits( coherence_forwarded_message_t ) ),
 		.SIZE                 ( FIFO_LENGTH                            ),
-		.ALMOST_FULL_THRESHOLD( FIFO_LENGTH                            )
+		.ALMOST_FULL_THRESHOLD( FIFO_LENGTH - 1                        )
 	)
 	fwd_request_fifo (
 		.clk         ( clk                            ),
@@ -277,7 +289,7 @@ module npu2memory #(
 		.flush_en    ( 1'b0                           ),
 		.full        (                                ),
 		.almost_full ( fwd_request_fifo_full          ),
-		.enqueue_en  ( ni_forwarded_request_valid 	  ),
+		.enqueue_en  ( accept_fwd_req           	  ),
 		.value_i     ( ni_forwarded_request           ), 
 		.empty       ( fwd_request_fifo_empty         ),
 		.almost_empty(                                ),
@@ -285,22 +297,13 @@ module npu2memory #(
 		.value_o     ( pending_fwd_request_out        )
 	);
 
+    assign accept_fwd_req                  = ni_forwarded_request_valid & ~fwd_request_fifo_full;
 	assign n2m_forwarded_request_available = ~fwd_request_fifo_full;
 	assign n2m_forwarded_request_consumed  = ~fwd_request_fifo_full & ni_forwarded_request_valid;
 
 	always_ff @( posedge clk ) begin
 		if ( ~reset )
 		begin
-			assert( !(fwd_request_fifo_full & ni_forwarded_request_valid) )
-			else begin
-				$error("[Time %t] [MC] Trying to enqueue a fwd message in MC, but the FIFO is full. Fwd details: fwd type = %s ; address=%8h ; source tile=[%1d, %1d]", 
-				$time(),
-				ni_forwarded_request.packet_type.name,
-				ni_forwarded_request.memory_address,
-				ni_forwarded_request.source.x,
-				ni_forwarded_request.source.y
-				);
-			end
 `ifdef DISPLAY_MEMORY_CONTROLLER
 			if ( n2m_forwarded_request_consumed ) begin
 				$display( "[Time %t] [MC] Fwd message of type %s equeued - Address: %h", $time(), ni_forwarded_request.packet_type.name, ni_forwarded_request.memory_address );
@@ -326,15 +329,15 @@ module npu2memory #(
 //  -----------------------------------------------------------------------
 	assign request_oh                      = {~fwd_request_fifo_empty, ~response_fifo_empty};
 
-	rr_arbiter #(
-		.NUM_REQUESTERS( NUM_REQ )
+	round_robin_arbiter #(
+		.SIZE( NUM_REQ )
 	)
-	rr_arbiter (
-		.clk       ( clk                                                    ),
-		.reset     ( reset                                                  ),
-		.request   ( request_oh                                             ),
-		.update_lru( fwd_request_fifo_dequeue_en | response_fifo_dequeue_en ),
-		.grant_oh  ( grant_oh                                               )
+	u_round_robin_arbiter (
+		.clk         ( clk                                                    ),
+		.reset       ( reset                                                  ),
+		.en          ( fwd_request_fifo_dequeue_en | response_fifo_dequeue_en ),
+		.requests    ( request_oh                                             ),
+		.decision_oh ( grant_oh                                               )
 	);
 
 	// A request is valid if there is a pending request from NI and pending request FIFO is not full

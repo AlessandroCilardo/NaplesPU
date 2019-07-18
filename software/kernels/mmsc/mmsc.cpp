@@ -1,5 +1,3 @@
-#include "data.h"
-
 #ifndef NPU_ACCELERATOR
     #include <strings.h>
     #include <stdio.h>
@@ -9,7 +7,10 @@
 #endif
 
 #define LOOP 1
+#define N 16
 
+static int A[N][N] = {{0}};
+static int B[N][N] = {{0}};
 static int C[N][N] __attribute__((aligned(64)))  = {{0}};
 
 void init_matrix(int a[N][N]);
@@ -30,12 +31,14 @@ int main(){
 
   __builtin_npu_barrier(42, CORE_NUMB * THREAD_NUMB - 1);
 
-  if (THREAD_ID == 0) {
+  if (CORE_ID == 0 && THREAD_ID == 0) {
     for (int i = 0; i < N*N; i += 64 / sizeof(int)) {
       __builtin_npu_flush((int) &C[i / N][i % N]);
     }
     __builtin_npu_write_control_reg(N*N, 12); // For cosimulation purpose
   }
+
+  __builtin_npu_barrier(43, CORE_NUMB * THREAD_NUMB - 1);
 
   return (int)&C;
 #else
@@ -47,10 +50,13 @@ int main(){
     }
   }
 
+  int pcount = 0;
+  
   for (int i = 0; i < N; i++) {
     for (int j = 0; j < N; j++) {
       printf(" %7d", C[i][j]);
-      if ((j+1) % 16 == 0)
+      pcount++;
+      if (pcount % 16 == 0)
         printf("\n");
     }
   }

@@ -28,29 +28,41 @@
 //   OF THE POSSIBILITY OF SUCH DAMAGE.
 
 `timescale 1ns / 1ps
-module fp_dp_fp2fix #(
-		parameter DATA_WIDTH = 64 )
-	(
-		input                       clk,
-		input                       rst,
-		input  [DATA_WIDTH - 1 : 0] op0,
-		output [DATA_WIDTH - 1 : 0] res
-	);
 
-	logic [DATA_WIDTH + 1 : 0] op0_fpc;
+module grant_hold_round_robin_arbiter
+    #(parameter SIZE = 4)
 
-	InputIEEE_11_52_to_11_52 u_conv_op0 (
-		.clk ( clk     ),
-		.rst ( rst     ),
-		.X   ( op0     ),
-		.R   ( op0_fpc )
+    (input                    clk,
+    input                     reset,
+    input[SIZE - 1:0]         requests,
+    input[SIZE - 1:0]         hold_in,
+    output logic[SIZE - 1:0]  decision_oh);
+
+	logic anyhold;
+	logic [SIZE - 1:0] grant_arb,last,hold;
+
+	round_robin_arbiter #(
+		.SIZE(SIZE)
+	)
+	u_round_robin_arbiter (
+		.clk         ( clk       ),
+		.reset       ( reset     ),
+		.en          ( 1'b0      ), 
+		//.en          ('{default:'0}),
+		.requests    ( requests   ),
+		.decision_oh ( grant_arb )
 	);
 	
-	FP2Fix_11_52_0_63_S_NT u_FP2Fix_8_23_0_31_S_NT (
-		.clk ( clk     ),
-		.rst ( rst     ),
-		.I   ( op0_fpc ),
-		.O   ( res     )
-	);
+	assign decision_oh = anyhold ? hold : grant_arb ;
+	assign hold = last & hold_in;
+	assign anyhold = | hold;
+	
+	always_ff @(posedge clk, posedge reset) begin
+	    if (reset) 
+	    	last <= 0;
+	    else
+	    	last <= decision_oh;   
+	end
 
 endmodule
+

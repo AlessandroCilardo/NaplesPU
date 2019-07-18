@@ -1,5 +1,42 @@
+//        Copyright 2019 NaplesPU
+//   
+//   	 
+//   Redistribution and use in source and binary forms, with or without modification,
+//   are permitted provided that the following conditions are met:
+//   
+//   1. Redistributions of source code must retain the above copyright notice,
+//      this list of conditions and the following disclaimer.
+//   
+//   2. Redistributions in binary form must reproduce the above copyright notice,
+//      this list of conditions and the following disclaimer in the documentation
+//      and/or other materials provided with the distribution.
+//   
+//   3. Neither the name of the copyright holder nor the names of its contributors
+//      may be used to endorse or promote products derived from this software
+//      without specific prior written permission.
+//   
+//      
+//   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+//   ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+//   WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+//   IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+//   INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+//   BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+//   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+//   LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+//   OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+//   OF THE POSSIBILITY OF SUCH DAMAGE.
+
 `timescale 1ns / 1ps
 `include "npu_coherence_defines.sv"
+
+/* The coherence protocol used is MSI plus some changes due to the directory's inclusivity. 
+ * In particular, a new stable state has been added, N, meaning the block is not cached in 
+ * the directory and has to be fetched from the main memory. The N state has been necessary 
+ * since when a block reaches the stable state I states that the block is cached only by 
+ * directory controller, and it is not present in any L1 cache, but the directory still has
+ * information on the block. While the directory has no information on blocks in state N. 
+ */
 
 /* verilator lint_off WIDTHCONCAT */
 module directory_protocol_rom (
@@ -74,8 +111,6 @@ module directory_protocol_rom (
 				// Next State N
 				dpr_output.next_state                     = STATE_MN_A;
 				dpr_output.next_state_is_stable           = 1'b0;
-				//dpr_output.invalidate_cache_way           = 1; 
-
 			end
 
 			{STATE_I, MESSAGE_DIR_FLUSH, 1'b?, 1'b?} : begin // Flush from directory
@@ -103,7 +138,6 @@ module directory_protocol_rom (
 
 				// Next State S
 				dpr_output.next_state                     = STATE_S;
-
 			end
 
 			{STATE_I, MESSAGE_GETM, 1'b?, 1'b?} : begin // GetM
@@ -119,7 +153,6 @@ module directory_protocol_rom (
 
 				// Next State M
 				dpr_output.next_state                     = STATE_M;
-
 			end
 
 			{STATE_I, MESSAGE_PUTS, 1'b?, 1'b0} : begin // PutS-NotLast
@@ -128,7 +161,6 @@ module directory_protocol_rom (
 				dpr_output.message_response_send          = 1;
 				dpr_output.message_response_type          = MESSAGE_PUTACK;
 				dpr_output.message_response_to_requestor  = 1;
-
 			end
 
 			{STATE_I, MESSAGE_PUTS, 1'b?, 1'b1} : begin // PutS-Last
@@ -137,14 +169,15 @@ module directory_protocol_rom (
 				dpr_output.message_response_send          = 1;
 				dpr_output.message_response_type          = MESSAGE_PUTACK;
 				dpr_output.message_response_to_requestor  = 1;
-
 			end
 
 
 			{STATE_I, MESSAGE_PUTM, 1'b1, 1'b?} : begin // PutM+data from Owner
 				
-				// NOT ADMITTED!
-				not_admitted                              = 1'b1;
+				// Send PutAck To Requestor
+				dpr_output.message_response_send          = 1;
+				dpr_output.message_response_type          = MESSAGE_PUTACK;
+				dpr_output.message_response_to_requestor  = 1;
 			end
 
 			{STATE_I, MESSAGE_PUTM, 1'b0, 1'b?} : begin // PutM+data from NonOwner
@@ -153,7 +186,6 @@ module directory_protocol_rom (
 				dpr_output.message_response_send          = 1;
 				dpr_output.message_response_type          = MESSAGE_PUTACK;
 				dpr_output.message_response_to_requestor  = 1;
-
 			end
 
 			{STATE_I, MESSAGE_DATA, 1'b?, 1'b?} : begin // Data
@@ -195,8 +227,6 @@ module directory_protocol_rom (
 				// Next State N
 				dpr_output.next_state                     = STATE_SN_A;
 				dpr_output.next_state_is_stable           = 1'b0;
-				//dpr_output.invalidate_cache_way           = 1; 
-
 			end
 
 			{STATE_S, MESSAGE_DIR_FLUSH, 1'b?, 1'b?} : begin // Flush from directory
@@ -221,7 +251,6 @@ module directory_protocol_rom (
 
 				// Add Requestor To Sharers
 				dpr_output.sharers_add_requestor          = 1'b1;
-
 			end
 
 			{STATE_S, MESSAGE_GETM, 1'b?, 1'b?} : begin // GetM
@@ -245,7 +274,6 @@ module directory_protocol_rom (
 
 				// Next State M
 				dpr_output.next_state                     = STATE_M;
-
 			end
 
 			{STATE_S, MESSAGE_PUTS, 1'b?, 1'b0} : begin // PutS-NotLast
@@ -257,7 +285,6 @@ module directory_protocol_rom (
 				dpr_output.message_response_send          = 1;
 				dpr_output.message_response_type          = MESSAGE_PUTACK;
 				dpr_output.message_response_to_requestor  = 1;
-
 			end
 
 			{STATE_S, MESSAGE_PUTS, 1'b?, 1'b1} : begin // PutS-Last
@@ -272,7 +299,6 @@ module directory_protocol_rom (
 
 				// Next State I
 				dpr_output.next_state                     = STATE_I;
-
 			end
 
 
@@ -291,7 +317,6 @@ module directory_protocol_rom (
 				dpr_output.message_response_send          = 1;
 				dpr_output.message_response_type          = MESSAGE_PUTACK;
 				dpr_output.message_response_to_requestor  = 1;
-
 			end
 
 			{STATE_S, MESSAGE_DATA, 1'b?, 1'b?} : begin // Data
@@ -327,8 +352,6 @@ module directory_protocol_rom (
 				// Next State MN_A
 				dpr_output.next_state                     = STATE_MN_A;
 				dpr_output.next_state_is_stable           = 1'b0;
-				// dpr_output.invalidate_cache_way           = 1; 
-
 			end
 
 			{STATE_M, MESSAGE_DIR_FLUSH, 1'b?, 1'b?} : begin // Flush from directory
@@ -361,9 +384,7 @@ module directory_protocol_rom (
 				// Next State S_D
 				dpr_output.next_state                     = STATE_S_D;
 				dpr_output.next_state_is_stable           = 1'b0;
-				
-				dpr_output.invalidate_cache_way           = 1; //
-
+				dpr_output.invalidate_cache_way           = 1; 
 			end
 
 			{STATE_M, MESSAGE_GETM, 1'b?, 1'b?} : begin // GetM
@@ -375,7 +396,6 @@ module directory_protocol_rom (
 
 				// Set Owner To Requestor
 				dpr_output.owner_set_requestor            = 1'b1;
-
 			end
 
 			{STATE_M, MESSAGE_PUTS, 1'b?, 1'b0} : begin // PutS-NotLast
@@ -384,7 +404,6 @@ module directory_protocol_rom (
 				dpr_output.message_response_send          = 1;
 				dpr_output.message_response_type          = MESSAGE_PUTACK;
 				dpr_output.message_response_to_requestor  = 1;
-
 			end
 
 			{STATE_M, MESSAGE_PUTS, 1'b?, 1'b1} : begin // PutS-Last
@@ -393,7 +412,6 @@ module directory_protocol_rom (
 				dpr_output.message_response_send          = 1;
 				dpr_output.message_response_type          = MESSAGE_PUTACK;
 				dpr_output.message_response_to_requestor  = 1;
-
 			end
 
 
@@ -412,7 +430,6 @@ module directory_protocol_rom (
 
 				// Next State I
 				dpr_output.next_state                     = STATE_I;
-
 			end
 
 			{STATE_M, MESSAGE_PUTM,1'b0, 1'b?} : begin // PutM+data from NonOwner
@@ -421,7 +438,6 @@ module directory_protocol_rom (
 				dpr_output.message_response_send          = 1;
 				dpr_output.message_response_type          = MESSAGE_PUTACK;
 				dpr_output.message_response_to_requestor  = 1;
-
 			end
 
 			{STATE_M, MESSAGE_DATA, 1'b?, 1'b?} : begin // Data
@@ -453,7 +469,6 @@ module directory_protocol_rom (
 				dpr_output.stall                          = 1'b1;
 				dpr_output.current_state_is_stable        = 1'b0;
 				dpr_output.next_state_is_stable           = 1'b0;
-
 			end
 
 			{STATE_S_D, MESSAGE_GETS, 1'b?, 1'b?} : begin // Gets
@@ -462,7 +477,6 @@ module directory_protocol_rom (
 				dpr_output.stall                          = 1'b1;
 				dpr_output.current_state_is_stable        = 1'b0;
 				dpr_output.next_state_is_stable           = 1'b0;
-
 			end
 
 			{STATE_S_D, MESSAGE_GETM, 1'b?, 1'b?} : begin // GetM
@@ -471,7 +485,6 @@ module directory_protocol_rom (
 				dpr_output.stall                          = 1'b1;
 				dpr_output.current_state_is_stable        = 1'b0;
 				dpr_output.next_state_is_stable           = 1'b0;
-
 			end
 
 			{STATE_S_D, MESSAGE_PUTS, 1'b?, 1'b0} : begin // PutS-NotLast
@@ -486,7 +499,6 @@ module directory_protocol_rom (
 
 				dpr_output.current_state_is_stable        = 1'b0;
 				dpr_output.next_state_is_stable           = 1'b0;
-
 			end
 
 			{STATE_S_D, MESSAGE_PUTS, 1'b?, 1'b1} : begin // PutS-Last
@@ -501,17 +513,18 @@ module directory_protocol_rom (
 
 				dpr_output.current_state_is_stable        = 1'b0;
 				dpr_output.next_state_is_stable           = 1'b0;
-
 			end
 
 
 			{STATE_S_D, MESSAGE_PUTM, 1'b1, 1'b?} : begin // PutM+data from Owner
 				
-				// NOT ADMITTED!
+				// Send PutAck To Requestor
+				dpr_output.message_response_send          = 1;
+				dpr_output.message_response_type          = MESSAGE_PUTACK;
+				dpr_output.message_response_to_requestor  = 1;
+
 				dpr_output.current_state_is_stable        = 1'b0;
 				dpr_output.next_state_is_stable           = 1'b0;
-				not_admitted                              = 1'b1;
-
 			end
 
 			{STATE_S_D, MESSAGE_PUTM, 1'b0, 1'b?} : begin // PutM+data from NonOwner
@@ -536,7 +549,6 @@ module directory_protocol_rom (
 				
 				//dpr_output.next_state_is_stable           = 1'b1;
 				dpr_output.current_state_is_stable        = 1'b0;
-
 			end
 
 			{STATE_S_D, MESSAGE_WB, 1'b?, 1'b?} : begin // WB
@@ -545,7 +557,6 @@ module directory_protocol_rom (
 				dpr_output.current_state_is_stable        = 1'b0;
 				dpr_output.next_state_is_stable           = 1'b0;
 				not_admitted                              = 1'b1;
-				
 			end
 
 			//--------------------------------------------------------------------------------
@@ -596,8 +607,6 @@ module directory_protocol_rom (
 				dpr_output.message_response_type          = MESSAGE_PUTACK;
 				dpr_output.message_response_to_requestor  = 1;
 
-				// NOT ADMITTED!
-				//not_admitted                              = 1'b1;
 			end
 
 			{STATE_N, MESSAGE_PUTS, 1'b?, 1'b1} : begin // PutS-Last
@@ -606,9 +615,6 @@ module directory_protocol_rom (
 				dpr_output.message_response_send          = 1;
 				dpr_output.message_response_type          = MESSAGE_PUTACK;
 				dpr_output.message_response_to_requestor  = 1;
-
-				// NOT ADMITTED!
-				//not_admitted                              = 1'b1;
 			end
 
 			{STATE_N, MESSAGE_PUTM, 1'b1, 1'b?} : begin // PutM+data from Owner
@@ -617,9 +623,6 @@ module directory_protocol_rom (
 				dpr_output.message_response_send          = 1;
 				dpr_output.message_response_type          = MESSAGE_PUTACK;
 				dpr_output.message_response_to_requestor  = 1;
-
-				// NOT ADMITTED!
-				//not_admitted                              = 1'b1;
 			end
 
 			{STATE_N, MESSAGE_PUTM, 1'b0, 1'b?} : begin // PutM+data from NonOwner
@@ -628,9 +631,6 @@ module directory_protocol_rom (
 				dpr_output.message_response_send          = 1;
 				dpr_output.message_response_type          = MESSAGE_PUTACK;
 				dpr_output.message_response_to_requestor  = 1;
-
-				// NOT ADMITTED!
-				//not_admitted                              = 1'b1;
 			end
 
 			{STATE_N, MESSAGE_DATA, 1'b?, 1'b?} : begin // Data
@@ -898,37 +898,36 @@ module directory_protocol_rom (
 
 			{STATE_NS_D, MESSAGE_PUTS, 1'b?, 1'b0} : begin // PutS-NotLast
 				
-				// NOT ADMITTED!
-				dpr_output.current_state_is_stable        = 1'b0;
-				dpr_output.next_state_is_stable           = 1'b0;
-				not_admitted                              = 1'b1;
+				// Send PutAck To Requestor
+				dpr_output.message_response_send          = 1;
+				dpr_output.message_response_type          = MESSAGE_PUTACK;
+				dpr_output.message_response_to_requestor  = 1;
 				
 			end
 
 			{STATE_NS_D, MESSAGE_PUTS, 1'b?, 1'b1} : begin // PutS-Last
 				
-				// NOT ADMITTED!
-				dpr_output.current_state_is_stable        = 1'b0;
-				dpr_output.next_state_is_stable           = 1'b0;
-				not_admitted                              = 1'b1;
-				
+				// Send PutAck To Requestor
+				dpr_output.message_response_send          = 1;
+				dpr_output.message_response_type          = MESSAGE_PUTACK;
+				dpr_output.message_response_to_requestor  = 1;
 			end
 
 			{STATE_NS_D, MESSAGE_PUTM, 1'b1, 1'b?} : begin // PutM+data from Owner
 				
-				// NOT ADMITTED!
-				dpr_output.current_state_is_stable        = 1'b0;
-				dpr_output.next_state_is_stable           = 1'b0;
-				not_admitted                              = 1'b1;
+				// Send PutAck To Requestor
+				dpr_output.message_response_send          = 1;
+				dpr_output.message_response_type          = MESSAGE_PUTACK;
+				dpr_output.message_response_to_requestor  = 1;
 				
 			end
 
 			{STATE_NS_D, MESSAGE_PUTM, 1'b0, 1'b?} : begin // PutM+data from NonOwner
 				
-				// NOT ADMITTED!
-				dpr_output.current_state_is_stable        = 1'b0;
-				dpr_output.next_state_is_stable           = 1'b0;
-				not_admitted                              = 1'b1;
+				// Send PutAck To Requestor
+				dpr_output.message_response_send          = 1;
+				dpr_output.message_response_type          = MESSAGE_PUTACK;
+				dpr_output.message_response_to_requestor  = 1;
 				
 			end
 

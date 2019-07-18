@@ -1,3 +1,32 @@
+//        Copyright 2019 NaplesPU
+//   
+//   	 
+//   Redistribution and use in source and binary forms, with or without modification,
+//   are permitted provided that the following conditions are met:
+//   
+//   1. Redistributions of source code must retain the above copyright notice,
+//      this list of conditions and the following disclaimer.
+//   
+//   2. Redistributions in binary form must reproduce the above copyright notice,
+//      this list of conditions and the following disclaimer in the documentation
+//      and/or other materials provided with the distribution.
+//   
+//   3. Neither the name of the copyright holder nor the names of its contributors
+//      may be used to endorse or promote products derived from this software
+//      without specific prior written permission.
+//   
+//      
+//   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+//   ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+//   WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+//   IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+//   INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+//   BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+//   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+//   LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+//   OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+//   OF THE POSSIBILITY OF SUCH DAMAGE.
+
 `timescale 1ns / 1ps
 `include "npu_user_defines.sv"
 `include "npu_defines.sv"
@@ -184,8 +213,12 @@ module control_register #(
 				else begin
 					if (debug_write_host[reg_id])
 						debug_register[reg_id] <= hi_write_cr_data;
-					else if (is_cr_write & debug_write_cpu[reg_id])
+                    else if (is_cr_write & debug_write_cpu[reg_id]) begin
 						debug_register[reg_id] <= opf_fetched_op0[0];
+`ifdef DISPLAY_DEBUG_REG
+                        $display("[Time %t][CORE %2d] Debug Reg %2d: %h", $time(), TILE_ID_PAR, opf_fetched_op1[0][$clog2( `CTR_NUMB ) - 1 : 0], opf_fetched_op0[0]);
+`endif
+                    end
 				end
 			end
 		end
@@ -424,5 +457,38 @@ module control_register #(
 	endgenerate
 
 `endif
+
+    final begin
+		$display( "[Time %t] [TESTBENCH] [CORE %1d] Kernel Cycles: %d ", $time( ), TILE_ID_PAR, kernel_cycles );
+		$display( "[Time %t] [TESTBENCH] [CORE %1d] DCache misses: %d ", $time( ), TILE_ID_PAR, data_miss_counter );
+		$display( "[Time %t] [TESTBENCH] [CORE %1d] ICache misses: %d ", $time( ), TILE_ID_PAR, instr_miss_counter );
+
+	`ifdef SIMULATION
+		$fdisplay( `DISPLAY_SIMULATION_LOG_VAR, "[Time %t] [TESTBENCH] [CORE %1d] Kernel Cycles: %d ", $time( ), TILE_ID_PAR, kernel_cycles );
+		$fdisplay( `DISPLAY_SIMULATION_LOG_VAR, "[Time %t] [TESTBENCH] [CORE %1d] DCache misses: %d ", $time( ), TILE_ID_PAR, data_miss_counter );
+		$fdisplay( `DISPLAY_SIMULATION_LOG_VAR, "[Time %t] [TESTBENCH] [CORE %1d] ICache misses: %d ", $time( ), TILE_ID_PAR, instr_miss_counter );
+	`endif
+
+		for ( int thread_id = 0; thread_id < `THREAD_NUMB; thread_id++ ) begin
+            if (thread_status_reg[thread_id] != THREAD_IDLE) begin
+			    $display( "[Time %t] [TESTBENCH] [CORE %1d] Thread %2d active cycles: %d ", $time( ), TILE_ID_PAR, thread_id, thread_work_cycles[thread_id] );
+	`ifdef SIMULATION
+			    $fdisplay( `DISPLAY_SIMULATION_LOG_VAR, "[Time %t] [TESTBENCH] [CORE %1d] Thread %2d active cycles: %d ", $time( ), TILE_ID_PAR, thread_id, thread_work_cycles[thread_id] );
+	`endif
+            end
+		end
+
+		for ( int thread_id = 0; thread_id < `THREAD_NUMB; thread_id++ ) begin
+            if (thread_status_reg[thread_id] != THREAD_IDLE) begin
+			    $display( "[Time %t] [TESTBENCH] [CORE %1d] Thread %2d misses cycles: %d ", $time( ), TILE_ID_PAR, thread_id, thread_blocked_cycle_count[thread_id] );
+	`ifdef SIMULATION
+			    $fdisplay( `DISPLAY_SIMULATION_LOG_VAR, "[Time %t] [TESTBENCH] [CORE %1d] Thread %2d misses cycles: %d ", $time( ), TILE_ID_PAR, thread_id, thread_blocked_cycle_count[thread_id] );
+	`endif
+            end
+        end 
+        
+    end 
+
+
 
 endmodule

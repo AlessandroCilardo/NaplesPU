@@ -1,3 +1,32 @@
+//        Copyright 2019 NaplesPU
+//   
+//   	 
+//   Redistribution and use in source and binary forms, with or without modification,
+//   are permitted provided that the following conditions are met:
+//   
+//   1. Redistributions of source code must retain the above copyright notice,
+//      this list of conditions and the following disclaimer.
+//   
+//   2. Redistributions in binary form must reproduce the above copyright notice,
+//      this list of conditions and the following disclaimer in the documentation
+//      and/or other materials provided with the distribution.
+//   
+//   3. Neither the name of the copyright holder nor the names of its contributors
+//      may be used to endorse or promote products derived from this software
+//      without specific prior written permission.
+//   
+//      
+//   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+//   ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+//   WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+//   IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+//   INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+//   BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+//   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+//   LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+//   OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+//   OF THE POSSIBILITY OF SUCH DAMAGE.
+
 `timescale 1ns / 1ps
 `include "npu_user_defines.sv"
 `include "npu_defines.sv"
@@ -5,7 +34,7 @@
 `include "npu_debug_log.sv"
 
 /*
- * This module is the L1 cache controller allocated in the nu+ core and directly connected to the LDST unit.
+ * This module is the L1 cache controller allocated in the single-cored version of NPU system and directly connected to the LDST unit.
  * The main task is to handle requests from the core (load/store miss, instruction miss, flush, evict) and
  * to serialize them. The request are scheduled with a fixed priority.
  *
@@ -301,14 +330,14 @@ module sc_cache_controller #(
 	assign execute_req = ~granted_need_snoop |
 	                     (granted_need_snoop & ((snoop_hit & granted_need_hit_miss) | (~snoop_hit & ~granted_need_hit_miss)));
 
-	rr_arbiter #(
-		.NUM_REQUESTERS ( /*CC_REQUESTORS*/8 )
+	round_robin_arbiter #(
+		.SIZE ( /*CC_REQUESTORS*/8 )
 	) arb (
-		.clk ( clk ),
-		.reset ( reset ),
-		.request ( {1'b0, requestors} ),
-		.update_lru ( 1'b0 ), // Fixed priority scheduling
-		.grant_oh ( grants )
+		.clk         ( clk                ),
+		.reset       ( reset              ),
+		.en          ( 1'b0               ), // Fixed priority scheduling
+		.requests    ( {1'b0, requestors} ),
+		.decision_oh ( grants             )
 	);
 
 //  -----------------------------------------------------------------------

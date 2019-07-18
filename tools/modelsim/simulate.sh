@@ -1,5 +1,34 @@
 #!/bin/bash
 
+#        Copyright 2019 NaplesPU
+#   
+#   	 
+#   Redistribution and use in source and binary forms, with or without modification,
+#   are permitted provided that the following conditions are met:
+#   
+#   1. Redistributions of source code must retain the above copyright notice,
+#      this list of conditions and the following disclaimer.
+#   
+#   2. Redistributions in binary form must reproduce the above copyright notice,
+#      this list of conditions and the following disclaimer in the documentation
+#      and/or other materials provided with the distribution.
+#   
+#   3. Neither the name of the copyright holder nor the names of its contributors
+#      may be used to endorse or promote products derived from this software
+#      without specific prior written permission.
+#   
+#      
+#   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+#   ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+#   WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+#   IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+#   INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+#   BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+#   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+#   LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+#   OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+#   OF THE POSSIBILITY OF SUCH DAMAGE.
+
 set -e
 
 . tools/sim/common.sh
@@ -39,7 +68,7 @@ vlog $COMPILE_FLAGS -sv "+incdir+../../src/include" "+incdir+../../src/include" 
 "../../src/mc/cache_controller/stall_protocol_rom.sv" \
 "../../src/common/memory_bank_2r1w.sv" \
 "../../src/common/tree_plru.sv" \
-"../../src/common/rr_arbiter.sv" \
+"../../src/common/round_robin_arbiter.sv" \
 "../../src/common/sync_fifo.sv" \
 "../../src/common/idx_to_oh.sv" \
 "../../src/core/scratchpad_memory/address_remapping_unit.sv" \
@@ -72,7 +101,7 @@ vlog $COMPILE_FLAGS -sv "+incdir+../../src/include" "+incdir+../../src/include" 
 "../../src/core/scratchpad_memory/scratchpad_memory_stage3.sv" \
 "../../src/core/scratchpad_memory/scratchpad_memory_stage2.sv" \
 "../../src/core/scratchpad_memory/scratchpad_memory_stage1.sv" \
-"../../src/mc/router/grant_hold_rr_arbiter.sv" \
+"../../src/mc/router/grant_hold_round_robin_arbiter.sv" \
 "../../src/mc/router/mux_npu.sv" \
 "../../src/mc/cache_controller/cache_controller.sv" \
 "../../src/mc/network_interface/control_unit_flit_to_packet.sv" \

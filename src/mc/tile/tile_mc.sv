@@ -1,3 +1,32 @@
+//        Copyright 2019 NaplesPU
+//   
+//   	 
+//   Redistribution and use in source and binary forms, with or without modification,
+//   are permitted provided that the following conditions are met:
+//   
+//   1. Redistributions of source code must retain the above copyright notice,
+//      this list of conditions and the following disclaimer.
+//   
+//   2. Redistributions in binary form must reproduce the above copyright notice,
+//      this list of conditions and the following disclaimer in the documentation
+//      and/or other materials provided with the distribution.
+//   
+//   3. Neither the name of the copyright holder nor the names of its contributors
+//      may be used to endorse or promote products derived from this software
+//      without specific prior written permission.
+//   
+//      
+//   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+//   ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+//   WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+//   IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+//   INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+//   BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+//   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+//   LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+//   OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+//   OF THE POSSIBILITY OF SUCH DAMAGE.
+
 `timescale 1ns / 1ps
 `include "npu_user_defines.sv"
 `include "npu_network_defines.sv"
@@ -6,6 +35,8 @@
 `ifdef DISPLAY_MEMORY
 	`include "npu_debug_log.sv"
 `endif
+
+// The MC tile interfaces the system with the main memory.
 
 module tile_mc # (
 		parameter TILE_ID             = 0,
@@ -28,9 +59,9 @@ module tile_mc # (
 		output        [`PORT_NUM - 1 : 1][`VC_PER_PORT - 1 : 0] tile_on_off_out,
 
 		// To MEM NI
-		output logic  [MEM_ADDRESS_WIDTH - 1 : 0]             n2m_request_address,
-		output logic                       [63 : 0]             n2m_request_dirty_mask,
-		output logic  [MEM_DATA_WIDTH - 1 : 0]                n2m_request_data,
+		output logic  [MEM_ADDRESS_WIDTH - 1 : 0]               n2m_request_address,
+		output logic  [63 : 0]                                  n2m_request_dirty_mask,
+		output logic  [MEM_DATA_WIDTH - 1 : 0]                  n2m_request_data,
 		output logic                                            n2m_request_read,
 		output logic                                            n2m_request_write,
 		output logic                                            n2m_request_is_instr,
@@ -40,8 +71,8 @@ module tile_mc # (
 		input  logic                                            m2n_request_read_available,
 		input  logic                                            m2n_request_write_available,
 		input  logic                                            m2n_response_valid,
-		input  logic  [MEM_ADDRESS_WIDTH - 1 : 0]             m2n_response_address,
-		input  logic  [MEM_DATA_WIDTH - 1 : 0]                m2n_response_data
+		input  logic  [MEM_ADDRESS_WIDTH - 1 : 0]               m2n_response_address,
+		input  logic  [MEM_DATA_WIDTH - 1 : 0]                  m2n_response_data
 	);
 
     localparam logic [`TOT_X_NODE_W-1 : 0] X_ADDR = TILE_ID[`TOT_X_NODE_W-1 : 0];

@@ -1,10 +1,39 @@
+//        Copyright 2019 NaplesPU
+//   
+//   	 
+//   Redistribution and use in source and binary forms, with or without modification,
+//   are permitted provided that the following conditions are met:
+//   
+//   1. Redistributions of source code must retain the above copyright notice,
+//      this list of conditions and the following disclaimer.
+//   
+//   2. Redistributions in binary form must reproduce the above copyright notice,
+//      this list of conditions and the following disclaimer in the documentation
+//      and/or other materials provided with the distribution.
+//   
+//   3. Neither the name of the copyright holder nor the names of its contributors
+//      may be used to endorse or promote products derived from this software
+//      without specific prior written permission.
+//   
+//      
+//   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+//   ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+//   WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+//   IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+//   INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+//   BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+//   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+//   LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+//   OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+//   OF THE POSSIBILITY OF SUCH DAMAGE.
+
 `timescale 1ns / 1ps
 `include "npu_user_defines.sv"
 `include "npu_network_defines.sv"
 `include "npu_debug_log.sv"
 
 /*
- *  CORRECT INTERPRETATION OF TILE POSITION:
+ *  CORRECT INTERPRETATION OF TILE POSITIONS:
  *
  *     EXAMPLE: 3 x 3
  *
@@ -46,8 +75,6 @@ module npu_noc #(
 
 		// interface MC
 		output                            n2m_request_is_instr, // XXX: Debug signal!!
-		//output [7 : 0]                    nu_leds_out,          // XXX: Debug signal!!
-		//output [3 : 0]                    nu_thread_en,
 
 		output [MEM_ADDR_w - 1 : 0]       mc_address_o,         // output: Address to MC
 		output             [63 : 0]       mc_dirty_mask_o,         // output: Address to MC
@@ -198,7 +225,8 @@ module npu_noc #(
 					);
 				end else begin: TILE_NONE_INST
 					tile_none #(
-						.TILE_ID( ( row * NoC_COL + col ) )
+						.TILE_ID( ( row * NoC_COL + col )),
+						.TILE_MEMORY_ID( `TILE_MEMORY_ID )
 					)
 					u_tile_none (
 						.clk                ( clk                           ),

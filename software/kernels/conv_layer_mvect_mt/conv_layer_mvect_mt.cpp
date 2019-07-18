@@ -67,13 +67,17 @@ int main()
     }
   }
 
+  int pcout = 0;
+
   for (int i = 0; i < IN_MATR_DIM; i++)
   {
     for (int j = 0; j < IN_MATR_DIM; j++)
     {
       printf(" %7d", matrix_output[i][j]);
+      pcout++;
     }
-    printf("\n");
+    if ((pcout % 16) == 0) 
+        printf("\n");
   }
 
   return 0;
@@ -101,8 +105,6 @@ void conv_layer(vec16i32 *matrix_input, int kernel_input[KERNEL_DIM][KERNEL_DIM]
         }
       }
   }
-
-  __builtin_npu_barrier(CORE_ID + 10, THREAD_NUMB - 1);
 }
 
 void vect_rows_shift(vec16i32 *matrix_output)

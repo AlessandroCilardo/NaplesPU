@@ -1,3 +1,32 @@
+//        Copyright 2019 NaplesPU
+//   
+//   	 
+//   Redistribution and use in source and binary forms, with or without modification,
+//   are permitted provided that the following conditions are met:
+//   
+//   1. Redistributions of source code must retain the above copyright notice,
+//      this list of conditions and the following disclaimer.
+//   
+//   2. Redistributions in binary form must reproduce the above copyright notice,
+//      this list of conditions and the following disclaimer in the documentation
+//      and/or other materials provided with the distribution.
+//   
+//   3. Neither the name of the copyright holder nor the names of its contributors
+//      may be used to endorse or promote products derived from this software
+//      without specific prior written permission.
+//   
+//      
+//   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+//   ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+//   WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+//   IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+//   INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+//   BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+//   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+//   LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+//   OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+//   OF THE POSSIBILITY OF SUCH DAMAGE.
+
 `timescale 1ns / 1ps
 `include "npu_user_defines.sv"
 `include "npu_defines.sv"
@@ -7,6 +36,8 @@
 `include "npu_message_service_defines.sv"
 `include "npu_debug_log.sv"
 
+// Testbench for the coherence injection.
+ 
 module tb_coherence_injection #(
 		parameter KERNEL_IMAGE = "mmsc_mem.hex",
 		parameter THREAD_MASK  = 8'hFF,
@@ -101,7 +132,7 @@ module tb_coherence_injection #(
 //  -----------------------------------------------------------------------	
 
 	typedef enum {
-		//In this TB, we communicate with the CC acting like the Core NU+, so we must be able to
+		//In this TB, we communicate with the CC acting like the Core so we must be able to
 		//submit all and only the REQUEST class message for the core. 
 		LOAD						= 0,
 		LOAD_UNCOHERENT				= 1,
@@ -541,7 +572,7 @@ module tb_coherence_injection #(
 		endcase
 
 
-		//cache line assignament //FIXME: assegnare cache_line
+		//cache line assignament 
 		case( create_random_coherence_request.request_type )
 		  FLUSH, REPLACEMENT, DINV, FLUSH_UNCOHERENT, REPLACEMENT_UNCOHERENT, DINV_UNCOHERENT:
 			create_random_coherence_request.cache_line = 512'b0;

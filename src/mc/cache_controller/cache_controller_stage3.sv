@@ -1,8 +1,48 @@
+//        Copyright 2019 NaplesPU
+//   
+//   	 
+//   Redistribution and use in source and binary forms, with or without modification,
+//   are permitted provided that the following conditions are met:
+//   
+//   1. Redistributions of source code must retain the above copyright notice,
+//      this list of conditions and the following disclaimer.
+//   
+//   2. Redistributions in binary form must reproduce the above copyright notice,
+//      this list of conditions and the following disclaimer in the documentation
+//      and/or other materials provided with the distribution.
+//   
+//   3. Neither the name of the copyright holder nor the names of its contributors
+//      may be used to endorse or promote products derived from this software
+//      without specific prior written permission.
+//   
+//      
+//   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+//   ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+//   WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+//   IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+//   INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+//   BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+//   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+//   LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+//   OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+//   OF THE POSSIBILITY OF SUCH DAMAGE.
+
 `timescale 1ns / 1ps
 `include "npu_user_defines.sv"
 `include "npu_defines.sv"
 `include "npu_coherence_defines.sv"
 `include "npu_network_defines.sv"
+
+ 
+/* Stage 3 is responsible for the actual execution of requests. Once a request is processed, 
+ * this stage issues signals to the units in the above stages in order to update data properly.
+ * In particular, this stage drives datapath to perform one of these functions:
+ *
+ *  -  block replacement evaluation;
+ *  -  MSHR update;
+ *  -  cache memory (both data and coherence info) update.
+ *  -  preparing outgoing coherence messages.
+ */  
 
 module cache_controller_stage3 (
 
@@ -165,10 +205,11 @@ module cache_controller_stage3 (
 //  -----------------------------------------------------------------------
 //  -- Cache Controller Stage 3 - Replacement evalutation
 //  -----------------------------------------------------------------------
-	// Valutiamo se la way uscente (cc2_request_lru_way_idx) ha un dato valido o meno, la valutazione � fatta sui privilegi. Ricalcoliamo
-	// l'address originale concatenando il tag all'index (l'index della way entrante e della way uscente sono uguali),
-	// in modo da poterlo usare in caso di replacement
-
+    // A cache block replacement might occur whenever a new block has to be stored into the L1 and all the sets are busy. 
+    // In case of available sets, the control logic will select them avoiding replacement. Hence, an eviction occurs only 
+    // when the selected block has valid information. Block validity is assured by privilege bits associated with it. 
+    // These privilege bits (one for each way) come from Stage 2 that in turn has received them from load/store unit. 
+    // The pseudo-LRU module, in Stage 2, selects the block to replace pointing least used way.
 	always_comb begin
 		replaced_way_valid          = cc2_request_snoop_privileges[cc2_request_lru_way_idx].can_read | cc2_request_snoop_privileges[cc2_request_lru_way_idx].can_write;
 
@@ -229,11 +270,7 @@ module cache_controller_stage3 (
 		end
 
 		cc3_update_mshr_entry_data = pr_output.req_has_data ? cc2_request_data     : cc2_request_mshr_entry_data;
-
-		// In caso di preallocazione la ROM dirà di allocare una entry nel MSHR, ma questa � stata
-		// gi� preallocata. In caso di replacement quindi dobbiamo utilizzare il way passato dallo
-		// stadio precedente.
-		cc3_update_mshr_index      = cc2_request_mshr_hit ? cc2_request_mshr_index : cc2_request_mshr_empty_index; //FIXME: Non va bene se si rilassa il vincolo del set.
+		cc3_update_mshr_index      = cc2_request_mshr_hit ? cc2_request_mshr_index : cc2_request_mshr_empty_index; 
 	end
 
 //  -----------------------------------------------------------------------
@@ -267,8 +304,7 @@ module cache_controller_stage3 (
 	assign request_is_valid = cc2_request_valid & ~is_replacement_collision;
 	
 	always_comb begin
-		// Aggiorniamo i privilegi solo nel caso di snoop hit. Senza questo controllo andiamo
-		// a sovrascrivere i privilegi di una nuova way che ha innescato un replacement.
+		// Update privilages only in case of snoop hit
 		if ( request_is_valid ) begin
 			cc3_update_mshr_en            = ( pr_output.allocate_mshr_entry || pr_output.update_mshr_entry || pr_output.deallocate_mshr_entry || do_replacement );
 			cc3_update_ldst_valid         = (( pr_output.update_privileges && cc2_request_snoop_hit ) || pr_output.write_data_on_cache);

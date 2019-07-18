@@ -1,9 +1,46 @@
+//        Copyright 2019 NaplesPU
+//   
+//   	 
+//   Redistribution and use in source and binary forms, with or without modification,
+//   are permitted provided that the following conditions are met:
+//   
+//   1. Redistributions of source code must retain the above copyright notice,
+//      this list of conditions and the following disclaimer.
+//   
+//   2. Redistributions in binary form must reproduce the above copyright notice,
+//      this list of conditions and the following disclaimer in the documentation
+//      and/or other materials provided with the distribution.
+//   
+//   3. Neither the name of the copyright holder nor the names of its contributors
+//      may be used to endorse or promote products derived from this software
+//      without specific prior written permission.
+//   
+//      
+//   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+//   ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+//   WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+//   IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+//   INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+//   BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+//   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+//   LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+//   OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+//   OF THE POSSIBILITY OF SUCH DAMAGE.
+
 `timescale 1ns / 1ps
 `include "npu_coherence_defines.sv"
 
 `ifdef DISPLAY_COHERENCE
 `include "npu_debug_log.sv"
 `endif
+
+/* Stage 3 is responsible for the actual execution of requests based on the protocol ROM. 
+ * Once a request is processed, this module issues signals to the units in the above stages
+ * in order to update information and data in caches properly. Every group of signals to a 
+ * particular unit is managed by a subsystem, each one represented in the picture below.  
+ * Each subsystem is simply a combinatorial logic that "converts" signals from protocol
+ * ROM in proper commands to the relative unit. 
+ */ 
 
 module directory_controller_stage3 # (
 		parameter TILE_ID        = 0,
@@ -136,11 +173,6 @@ module directory_controller_stage3 # (
 //  -----------------------------------------------------------------------
 //  -- Directory Controller Stage 3 - Current state selector
 //  -----------------------------------------------------------------------
-	//  Si deve processare nella protocol ROM una determinata richiesta. QUesta dipende da vari fattori:
-	//      - se c'� stato un cache hit, allora lo stato che processo lo prelevo dalla cache (� quello ch ha fatto hit)
-	//      - se c'� stato un TSHR hit, allora c'era una richesta pendente e bisogna prender elo stato dal TSHR
-	//      - se c'� un replacement, allora lo sato bisogna prenderlo dal messaggio
-	//      - se non sta da nessuna parte, allora vuol dire che lo stato � N
 
 	assign is_replacement = dc2_message_type == REPLACEMENT;
 
@@ -162,14 +194,14 @@ module directory_controller_stage3 # (
 			current_owner        = dc2_replacement_owner;
 		end else begin
 			current_address      = dc2_message_address;
-			current_state        = {`DIRECTORY_STATE_WIDTH{1'b0}}; // stato N
+			current_state        = {`DIRECTORY_STATE_WIDTH{1'b0}}; // state N
 			current_sharers_list = {`TILE_COUNT{1'b0}};
 			current_owner        = tile_address_t'(TILE_MEMORY_ID);
 		end
 	end
 
-	assign dc3_pending                                = dc2_message_valid | instr_request_pending,
-		dc3_pending_address                           = ( dc2_message_valid ) ? dc2_message_address : instr_request_address;
+	assign dc3_pending      = dc2_message_valid | instr_request_pending,
+		dc3_pending_address = ( dc2_message_valid ) ? dc2_message_address : instr_request_address;
 
 //  -----------------------------------------------------------------------
 //  -- Directory Controller Stage 3 - One-hot for sharer list and message
@@ -248,9 +280,8 @@ module directory_controller_stage3 # (
 				~( {`TILE_COUNT{dpr_output.sharers_remove_requestor}} & requestor_oh ) 
 			),
 		next_owner                                    = dpr_output.owner_clear ? tile_address_t'(TILE_ID) : dpr_output.owner_set_requestor ? dc2_message_source : current_owner,
-		next_data                                     = dpr_output.store_data ? dc2_message_data : dc2_message_cache_data; // TODO SICURO AL 90%
+		next_data                                     = dpr_output.store_data ? dc2_message_data : dc2_message_cache_data; 
 
-	// C'� un update nelle info di coerenza se: 1 cambia stato, 2 modifico l'owner, 3 modifico gli sharer
 	assign coherence_update_info_en                   =
 		( current_state != dpr_output.next_state ) |
 		dpr_output.owner_clear | dpr_output.owner_set_requestor | dpr_output.sharers_add_owner |
@@ -280,36 +311,28 @@ module directory_controller_stage3 # (
 //  -----------------------------------------------------------------------
 //  -- Directory Controller Stage 3 - TSHR update signals
 //  -----------------------------------------------------------------------
-	assign tshr_allocate                              = current_state_is_stable && !next_state_is_stable, // OK
-		tshr_update                                   = !current_state_is_stable & !next_state_is_stable & coherence_update_info_en, // OK
-		tshr_deallocate                               = !current_state_is_stable && next_state_is_stable; // OK
+	assign tshr_allocate                              = current_state_is_stable && !next_state_is_stable, 
+		tshr_update                                   = !current_state_is_stable & !next_state_is_stable & coherence_update_info_en,
+		tshr_deallocate                               = !current_state_is_stable && next_state_is_stable;
 
-	assign dc3_update_tshr_entry_info.valid           = ( tshr_allocate | tshr_update ) & ~tshr_deallocate, // OK
+	assign dc3_update_tshr_entry_info.valid           = ( tshr_allocate | tshr_update ) & ~tshr_deallocate, 
 		dc3_update_tshr_entry_info.state              = directory_state_t'(dpr_output.next_state),
-		dc3_update_tshr_entry_info.address.tag        = dc2_message_address.tag, // TODO SICURO AL 90%, va bene sia per cache hit che per nuova richiesta
+		dc3_update_tshr_entry_info.address.tag        = dc2_message_address.tag, 
 		dc3_update_tshr_entry_info.address.index      = dc2_message_address.index,
 		dc3_update_tshr_entry_info.address.offset     = dc2_message_address.offset,
 		dc3_update_tshr_entry_info.sharers_list       = next_sharers_list,
 		dc3_update_tshr_entry_info.owner              = next_owner;
 
-	assign dc3_update_tshr_enable                     = dc2_message_valid && ( tshr_allocate || tshr_deallocate || tshr_update ) , // OK
-		dc3_update_tshr_index                         = tshr_allocate ? tshr_empty_index : dc2_message_tshr_index; // OK
+	assign dc3_update_tshr_enable                     = dc2_message_valid && ( tshr_allocate || tshr_deallocate || tshr_update ), 
+		dc3_update_tshr_index                         = tshr_allocate ? tshr_empty_index : dc2_message_tshr_index; 
 
 //  -----------------------------------------------------------------------
 //  -- Directory Controller Stage 3 - Cache update signals
 //  -----------------------------------------------------------------------
-	// non posso scrivere in memoria se si sta eseguendo un'operazione di replacement
-	// posso scrivere in memoria se prima stavo in uno stato stabile (es da S in M), se prima non c'era niente (da N in M) e se prima stava in TSHR (da Sd a S)
-	// nel primo caso non posso generare replacement, ma nel secondo e terzo caso si
-	// se c'era qualcosa, faccio hit, ma devo invalidare la linea in cache se devo allocare nel tshr
-	// se non c'era niente non posso scrivere Niente in memoria, quindi genero un replace sensato ed in questo caso non devo invalidare la vecchia linea
-	// se stava in tshr e vuole passare ad S, ok, non devo invalidare la vecchia linea; ma se vuole passare ad N in una linea occupata, non ha senso fare il replace e l'update
-
-	// Quindi scrivo in cache se voglio mettere un nuovo dato o voglio aggiornarlo, ma che non sia in N; oppure scrivo in cache per invalidare una linea che sta andando nel TSHR
 
 	assign update_cache                               = dc2_message_cache_hit & current_state_is_stable & next_state_is_stable & ( coherence_update_info_en | dpr_output.store_data );
 	assign deallocate_cache                           = ( tshr_allocate & dc2_message_cache_hit) ;
-	assign allocate_cache                             = next_state_is_stable & ( coherence_update_info_en | dpr_output.store_data ) & ~(tshr_deallocate & dpr_output.invalidate_cache_way) & ~update_cache; // ok
+	assign allocate_cache                             = next_state_is_stable & ( coherence_update_info_en | dpr_output.store_data ) & ~(tshr_deallocate & dpr_output.invalidate_cache_way) & ~update_cache;
 
 	assign dc3_update_cache_enable                    = dc2_message_valid && !is_replacement && ( allocate_cache || update_cache || deallocate_cache ),
 		dc3_update_cache_validity_bit                 = ~dpr_output.invalidate_cache_way,
@@ -386,7 +409,7 @@ module directory_controller_stage3 # (
 	// the request is rescheduled
 	assign do_replacement                             = dc2_message_valid && ((allocate_cache || update_cache) && !deallocate_cache) && !is_replacement && !dc2_message_cache_hit && dc2_message_cache_valid;
 
-	assign  dc3_replacement_request.source                = dc2_message_source,
+	assign  dc3_replacement_request.source            = dc2_message_source,
 		dc3_replacement_request.memory_address.tag    = dc2_message_cache_tag,
 		dc3_replacement_request.memory_address.index  = dc2_message_address.index,
 		dc3_replacement_request.memory_address.offset = 0,

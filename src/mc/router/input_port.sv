@@ -1,19 +1,40 @@
+//        Copyright 2019 NaplesPU
+//   
+//   	 
+//   Redistribution and use in source and binary forms, with or without modification,
+//   are permitted provided that the following conditions are met:
+//   
+//   1. Redistributions of source code must retain the above copyright notice,
+//      this list of conditions and the following disclaimer.
+//   
+//   2. Redistributions in binary form must reproduce the above copyright notice,
+//      this list of conditions and the following disclaimer in the documentation
+//      and/or other materials provided with the distribution.
+//   
+//   3. Neither the name of the copyright holder nor the names of its contributors
+//      may be used to endorse or promote products derived from this software
+//      without specific prior written permission.
+//   
+//      
+//   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+//   ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+//   WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+//   IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+//   INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+//   BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+//   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+//   LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+//   OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+//   OF THE POSSIBILITY OF SUCH DAMAGE.
+
 `timescale 1ns / 1ps
 `include "npu_network_defines.sv"
 
 /*
- * There are two queues: one to house flits (FQ) and another to house only head flits (HQ).
- *  The queue lengths are equals to contemplate the worst case - packets with only one flit.
- * Every time a valid flit enters in this unit, the HQ enqueues its only if the flit type is
- * `head' or `head-tail'. The FQ has the task of housing all the flits, while the 
- * HQ has to "register" all the entrance packets. To assert the dequeue signal for HQ, 
- * either allocator grant assertion and the output of a tail flit have to happen, 
- * so the number of elements in the HQ determines the number of packet entered in this virtual channel.
- * 
- * This organization works only if a condition is respected: the flits of each packets 
- * are stored consecutively and ordered in the FQ. To obtain this condition, a deterministic
- * routing has to be used and all the network interfaces have to send all the flits of a packet
- * without interleaving with other packet flits.
+ * This module is equipped with two queues: one stores flits (FQ) and the other stores only head flits (HQ).
+ * Whenever a valid flit enters in this unit, the HQ enqueues its only if the flit type is
+ * `head' or `head-tail'. HQ flits are used by the control logic to get
+ * information from their header, such as next hop, used in the routing algorithm. 
  */
 
 module input_port

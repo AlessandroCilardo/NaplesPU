@@ -1,14 +1,45 @@
+//        Copyright 2019 NaplesPU
+//   
+//   	 
+//   Redistribution and use in source and binary forms, with or without modification,
+//   are permitted provided that the following conditions are met:
+//   
+//   1. Redistributions of source code must retain the above copyright notice,
+//      this list of conditions and the following disclaimer.
+//   
+//   2. Redistributions in binary form must reproduce the above copyright notice,
+//      this list of conditions and the following disclaimer in the documentation
+//      and/or other materials provided with the distribution.
+//   
+//   3. Neither the name of the copyright holder nor the names of its contributors
+//      may be used to endorse or promote products derived from this software
+//      without specific prior written permission.
+//   
+//      
+//   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+//   ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+//   WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+//   IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+//   INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+//   BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+//   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+//   LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+//   OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+//   OF THE POSSIBILITY OF SUCH DAMAGE.
+
 `timescale 1ns / 1ps
 `include "npu_network_defines.sv"
 
 /*
+ * This module splits a packet into flits and sends them to the router local port.
+ * It also supports multicasting, implemented as multiple unicast messages. It is 
+ * composed of two parts: a packet queue, and a control unit which handles the outgoing flits. 
  * A priority encoder selects from a mask which destination has to be served.
  * All the information of the header flit are straightway filled, but the flit type.
  * The units performs the multicast throughout k unicast: when a destination is served (a packet
  * is completed), the corresponding bit in the destination mask is deasserted.
- * 
- * NOTE: if DEST_OH is true, the core destination has no sense
  */
+
 module control_unit_packet_to_flit # (
 		parameter DEST_OH          = "TRUE",
 		parameter X_ADDR           = 0,
@@ -52,15 +83,15 @@ module control_unit_packet_to_flit # (
 	assign packet_dest_pending                 = packet_destinations_valid & ~dest_served;
 	assign packet_has_dest_pending             = |packet_dest_pending;
 
-	rr_arbiter # (
-		.NUM_REQUESTERS ( DEST_NUMB )
+	round_robin_arbiter # (
+		.SIZE ( DEST_NUMB )
 	)
-	rr_arbiter (
-		.clk        ( clk                  ),
-		.reset      ( reset                ),
-		.request    ( packet_dest_pending  ),
-		.update_lru ( 1'b0                 ),
-		.grant_oh   ( destination_grant_oh )
+	u_round_robin_arbiter (
+		.clk          ( clk                  ),
+		.reset        ( reset                ),
+		.en           ( 1'b0                 ),
+		.requests     ( packet_dest_pending  ),
+		.decision_oh  ( destination_grant_oh )
 	);
 
 	oh_to_idx # (
@@ -72,21 +103,19 @@ module control_unit_packet_to_flit # (
 	);
 
 
-	// xxx funziona solo se la mesh � multipla di potenze di 2
+	// The mesh topology has to be power of two!
 	generate
 		if ( DEST_OH == "TRUE" ) begin
 			assign
 				real_dest.x  = destination_grant_id[ `TOT_X_NODE_W - 1 : 0 ],
 				real_dest.y  = destination_grant_id[ `TOT_X_NODE_W    +: `TOT_Y_NODE_W ];
-			//assign cu_flit_out_header.core_destination = tile_destination_t'( packet_destinations[`DEST_TILE_W -1 : 0] ); // per la response TODO
 		end else begin
 			assign real_dest = packet_destinations[destination_grant_id];
-			//assign cu_flit_out_header.core_destination = tile_destination_t'( destination_grant_oh[`DEST_TILE_W -1 : 0] ); // per la response
 		end
 		
 	endgenerate
 
-	assign cu_flit_out_header.core_destination = tile_destination_t'( destination_grant_oh[`DEST_TILE_W -1 : 0] ); // per la response
+	assign cu_flit_out_header.core_destination = tile_destination_t'( destination_grant_oh[`DEST_TILE_W -1 : 0] ); 
 	assign cu_flit_out_header.vc_id            = vc_id_t' ( VCID ) ;
 	assign cu_flit_out_header.destination      = packet_destination_sel;
 	assign cu_flit_out_header.next_hop_port    = port_t' ( next_port );

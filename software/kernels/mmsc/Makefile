@@ -15,7 +15,7 @@ DEPS=$(SRCS_TO_DEPS)
 $(OBJ_DIR)/$(basename($(SRCS))).hex: $(OBJS)
 	$(LD) -o $(OBJ_DIR)/$(notdir $(basename $<)).elf $(LDFLAGS) $(OBJS) $(AFLAGS)
 	$(ELF2HEX) -o $(OBJ_DIR)/$(notdir $(basename $<)).hex $(OBJ_DIR)/$(notdir $(basename $<)).elf
-	$(OBJDUMP) -disassemble-all $(OBJ_DIR)/$(notdir $(basename $<)).elf > $(OBJ_DIR)/$(notdir $(basename $<)).objdump
+	$(OBJDUMP) -d -s $(OBJ_DIR)/$(notdir $(basename $<)).elf > $(OBJ_DIR)/$(notdir $(basename $<)).objdump
 	
 
 clean:

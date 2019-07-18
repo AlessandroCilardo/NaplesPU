@@ -1,10 +1,15 @@
-TOPDIR=../../
+NPU_DIR?=$(MANGO_ROOT)/usr/local/llvm-npu
 
-include $(TOPDIR)/misc/NuPlus.mk
+CORE_NUMB?=1
+THREAD_NUMB?=8
 
-SRCS=dct_scalar.cpp
+KFLAGS=-DCORE_NUMB=$(CORE_NUMB) -DTHREAD_NUMB=$(THREAD_NUMB)
 
-OBJS= $(SRCS_TO_OBJS) $(TOPDIR)/libs/crt0.o $(TOPDIR)/libs/vectors.o
+include $(NPU_DIR)/misc-npu/NaplesPU.mk
+
+SRCS=mmsc_tiling.cpp
+
+OBJS= $(SRCS_TO_OBJS) $(NPU_DIR)/libs-npu/crt0.o $(NPU_DIR)/libs-npu/vectors.o
 DEPS=$(SRCS_TO_DEPS)
 
 $(OBJ_DIR)/$(basename($(SRCS))).hex: $(OBJS)

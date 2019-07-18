@@ -1,3 +1,32 @@
+//        Copyright 2019 NaplesPU
+//   
+//   	 
+//   Redistribution and use in source and binary forms, with or without modification,
+//   are permitted provided that the following conditions are met:
+//   
+//   1. Redistributions of source code must retain the above copyright notice,
+//      this list of conditions and the following disclaimer.
+//   
+//   2. Redistributions in binary form must reproduce the above copyright notice,
+//      this list of conditions and the following disclaimer in the documentation
+//      and/or other materials provided with the distribution.
+//   
+//   3. Neither the name of the copyright holder nor the names of its contributors
+//      may be used to endorse or promote products derived from this software
+//      without specific prior written permission.
+//   
+//      
+//   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+//   ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+//   WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+//   IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+//   INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+//   BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+//   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+//   LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+//   OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+//   OF THE POSSIBILITY OF SUCH DAMAGE.
+
 `timescale 1ns / 1ps
 `include "npu_defines.sv"
 `include "npu_coherence_defines.sv"
@@ -5,6 +34,10 @@
 `ifdef DISPLAY_COHERENCE
  `include "npu_debug_log.sv"
 `endif
+
+/* Stage 1 is responsible for issuing requests to the control logic. All 
+ * requests are coherence request/response from the network interface. 
+ */ 
 
 module directory_controller_stage1 #(
 		parameter TILE_ID = 0 )
@@ -186,8 +219,16 @@ module directory_controller_stage1 #(
 	
 	// WB Gen Queue has the highest priority since is a transation still
 	// in progress. A WB is scheduled as soon as it is pending.
-	assign can_issue_response             = ni_response_valid;
-	assign can_issue_wb_request           = wb_gen_pending;                           
+	always_comb 
+        can_issue_wb_request           = wb_gen_pending;
+
+	always_comb
+        can_issue_response             = ni_response_valid && 
+		! (
+			( dc2_pending && dc2_pending_address.index == ni_response_address.index ) ||
+			( dc3_pending && dc3_pending_address.index == ni_response_address.index )
+		);
+
 	always_comb
 		can_issue_replacement_request = !rp_empty && !tshr_full && !replacement_request_tshr_hit &&
 		! (

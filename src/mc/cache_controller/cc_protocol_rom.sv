@@ -1,3 +1,32 @@
+//        Copyright 2019 NaplesPU
+//   
+//   	 
+//   Redistribution and use in source and binary forms, with or without modification,
+//   are permitted provided that the following conditions are met:
+//   
+//   1. Redistributions of source code must retain the above copyright notice,
+//      this list of conditions and the following disclaimer.
+//   
+//   2. Redistributions in binary form must reproduce the above copyright notice,
+//      this list of conditions and the following disclaimer in the documentation
+//      and/or other materials provided with the distribution.
+//   
+//   3. Neither the name of the copyright holder nor the names of its contributors
+//      may be used to endorse or promote products derived from this software
+//      without specific prior written permission.
+//   
+//      
+//   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+//   ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+//   WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+//   IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+//   INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+//   BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+//   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+//   LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+//   OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+//   OF THE POSSIBILITY OF SUCH DAMAGE.
+
 `timescale 1ns / 1ps
 `include "npu_coherence_defines.sv"
 
@@ -153,6 +182,10 @@ module cc_protocol_rom (
 				pr_output.hit = 1'b1;
 			end
 
+			{I, recall}                 : begin               //recall
+				// No Actions!
+			end 
+
 			{I, load}                     : begin				//load
 
 				//Send GetS to Directory
@@ -225,7 +258,7 @@ module cc_protocol_rom (
 			end
 
 			{ISd, Data_from_Dir_ack_eqz},
-			{ISd, Data_from_Dir_ack_gtz}, //XXX: NB questa riga � differente dal protocollo del primer
+			{ISd, Data_from_Dir_ack_gtz}, 
 			{ISd, Data_from_Owner}        : begin				//data from dir (ack=0), data from dir (ack>0), data from owner
 
 				//Next state: S
@@ -430,7 +463,6 @@ module cc_protocol_rom (
 				//Next state: I
 				pr_output.next_state             = I;
 				pr_output.next_state_is_stable   = 1'b1;
-			//  non alloca nessuna entry nel MSHR ma manda solo il messaggio in rete ed aggiorna i privilegi
 			end
 
 			{S, Fwd_Flush},
@@ -458,9 +490,8 @@ module cc_protocol_rom (
 			{SMad, flush},
 			{SMad, store},
 			{SMad, replacement},
-			//{SMad, recall},
 			{SMad, Fwd_GetS},
-			{SMad, Fwd_GetM}              : begin				//fwd-flush, flush, store, replacement, recall, fwd-getS, fwd-getM
+			{SMad, Fwd_GetM}              : begin				//fwd-flush, flush, store, replacement, fwd-getS, fwd-getM
 				pr_output.stall                  = 1'b1;
 			end
 
@@ -489,7 +520,6 @@ module cc_protocol_rom (
 				pr_output.next_state             = M;
 				pr_output.next_state_is_stable   = 1'b1;
 				pr_output.deallocate_mshr_entry  = 1'b1;
-				// pr_output.write_data_on_cache    = 1'b1; non serve, gi� � in cache
 			end
 
 			{SMad, Data_from_Dir_ack_gtz} : begin				//data from dir (ack>0)
@@ -498,7 +528,6 @@ module cc_protocol_rom (
 				pr_output.next_state             = SMa;
 				pr_output.update_mshr_entry      = 1'b1;
 				pr_output.req_has_data           = 1'b1;
-				// pr_output.write_data_on_cache    = 1'b1; non serve, gi� � in cache
 			end
 
 			{SMad, Inv_Ack}               : begin				//inv-ack
@@ -522,7 +551,7 @@ module cc_protocol_rom (
 			{SMa, store},
 			{SMa, replacement},
 			{SMa, Fwd_GetS},
-			{SMa, Fwd_GetM}               : begin				//fwd-flush, flush, store, replacement, recall, fwd-getS, fwd-getM
+			{SMa, Fwd_GetM}               : begin				//fwd-flush, flush, store, replacement, fwd-getS, fwd-getM
 				pr_output.stall                  = 1'b1;
 			end
 
@@ -557,7 +586,6 @@ module cc_protocol_rom (
 				pr_output.next_state             = M;
 				pr_output.next_state_is_stable   = 1'b1;
 				pr_output.deallocate_mshr_entry  = 1'b1;
-				// pr_output.write_data_on_cache    = 1'b1; non serve, gi� � in cache
 			end
 
 			//--------------------------------------------------------------------------------
@@ -689,7 +717,6 @@ module cc_protocol_rom (
 			{UW, load_uncoherent}          : begin				//load-uncoherent
 
 				//Send fwd-getM 
-				//[è una load, si potrebbe fare una getS?]
 				pr_output.send_forward           = 1'b1;
 				pr_output.forward                = FWD_GETM;
 
@@ -775,12 +802,11 @@ module cc_protocol_rom (
 			{MIa, Fwd_GetS}               : begin				//fwd-getS
 
 				//Send Data to Dir and Requestor
+				pr_output.send_response          = 1'b1;
 				pr_output.is_receiver_dir        = 1'b1;
 				pr_output.is_receiver_req        = 1'b1;
 				pr_output.send_data              = 1'b1;
 				pr_output.send_data_from_mshr    = 1'b1;
-				//[in (M, fwd-getM) è stato messo anche .response = DATA qui non ci va?]
-				//[sto in MIa e mi arriva una getS, non dovrei spostarmi in SIa ?]
 				pr_output.response				 = DATA;
 				pr_output.next_state			 = SIa;
 				pr_output.next_state_is_stable	 = 1'b0;
@@ -788,8 +814,10 @@ module cc_protocol_rom (
 
 			{MIa, Fwd_GetM}               : begin				//fwd-getM
 				//Send Data to Requestor 
+				pr_output.send_response          = 1'b1;
 				pr_output.is_receiver_req        = 1'b1;
 				pr_output.send_data              = 1'b1;
+				pr_output.response				 = DATA;
 				pr_output.send_data_from_mshr    = 1'b1;
 
 				//Next state: IIa

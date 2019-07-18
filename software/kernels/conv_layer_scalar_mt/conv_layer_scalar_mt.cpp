@@ -25,11 +25,10 @@ int main () {
   
     if (THREAD_ID == 0 && CORE_ID == 0)
     {
-      for (int i = 0; i <= IN_MATR_DIM; i++)
-      { 
-        __builtin_npu_flush((int) &matrix_output[i][0]);
-      }
-      __builtin_npu_write_control_reg(IN_MATR_DIM * IN_MATR_DIM, 12); // For cosimulation purpose
+        for (int i = 0; i < IN_MATR_DIM *  IN_MATR_DIM; i += 64 / sizeof(int)) {
+            __builtin_npu_flush((int) &matrix_output[i / IN_MATR_DIM][i % IN_MATR_DIM]);
+        }
+        __builtin_npu_write_control_reg(IN_MATR_DIM * IN_MATR_DIM, 12); // For cosimulation purpose
     }
     __builtin_npu_barrier(43, CORE_NUMB * THREAD_NUMB - 1);
 
@@ -43,10 +42,13 @@ int main () {
       }
     }
   
+    int pcount = 0;
+
     for (int i = 0; i < IN_MATR_DIM; i++) {
       for (int j = 0; j < IN_MATR_DIM; j++) {
         printf(" %7d", matrix_output[i][j]);
-        if ((j+1) % 16 == 0)
+        pcount++;
+        if ((pcount % 16) == 0)
           printf("\n");
       }
     }

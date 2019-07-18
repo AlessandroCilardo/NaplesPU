@@ -1,5 +1,31 @@
 #!/bin/bash
 
+#            Copyright 2019 NaplesPU
+#   
+#   Redistribution and use in source and binary forms, with or without modification,
+#   are permitted provided that the following conditions are met:
+#   
+#   1. Redistributions of source code must retain the above copyright notice,
+#   this list of conditions and the following disclaimer.
+#   
+#   2. Redistributions in binary form must reproduce the above copyright notice,
+#   this list of conditions and the following disclaimer in the documentation
+#   and/or other materials provided with the distribution.
+#   
+#   3. Neither the name of the copyright holder nor the names of its contributors
+#   may be used to endorse or promote products derived from this software
+#   without specific prior written permission.
+#   
+#   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+#   AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+#   THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+#   IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+#   INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+#   PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+#   HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+#   OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+#   EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 ##---------------------------------
 ## Function used to describe the 
 ## usage of the test
@@ -78,9 +104,9 @@ while test $# -gt 0; do
                         echo " "
                         echo "options:"
                         echo "-h,  --help                  show this help"
-                        echo "-t,  --tool=vsim or vivado   specify the tool to use, default: vsim"
-                        echo "-cn, --core-numb=VALUE       specify the core number, default: 1"
-                        echo "-tn, --thread-numb=VALUE     specify the thread number, default: 8"
+                        echo "-t,  --tool vsim or vivado   specify the tool to use, default: vsim"
+                        echo "-cn, --core-numb VALUE       specify the core number, default: 1"
+                        echo "-tn, --thread-numb VALUE     specify the thread number, default: 8"
                         exit 0
                         ;;
                 -t|--tool)
@@ -134,7 +160,7 @@ logo
 # Kernels under test list
 # lud_float has rounding errors, the output diverges from 
 # the expected one.
-KERNELS=( barriertest mmsc mmsc_float scratchtest conv_layer_scalar_mt conv_layer_mvect_mt lud_scalar lud_float matrix_transpose marching_squares ) 
+KERNELS=( barriertest mmsc mmsc_float mmsc_tiling dct_scalar conv_layer_scalar_mt conv_layer_mvect_mt lud_scalar lud_float matrix_transpose marching_squares ) 
 
 # Checking the NPU toolchain installation
 if [ ! -e "$MANGO_ROOT/usr/local/llvm-npu" ]; then
@@ -154,23 +180,23 @@ fi
 SIM="none"
 
 # Checking ModelSim
-if $(hash vsim &> /dev/null) && [ $TOOL_MODE == "vsim" ]; then
-  echo "ModelSim installed: $(type vsim 2> /dev/null)"
-  SIM="vsim"
-  else 
-    if $(hash vivado &> /dev/null); then
-      echo "Vivado selected."
-      SIM="vivado"
-    fi 
-fi 
-
-if $(hash vivado &> /dev/null) && [ $TOOL_MODE == "vivado" ]; then
-  echo "Vivado installed: $(type vivado 2> /dev/null)"     
-  SIM="vivado"
-  else 
+if [ $TOOL_MODE == "vsim" ]; then
     if $(hash vsim &> /dev/null); then
-      echo "ModelSim selected."
-      SIM="vsim" 
+        echo "ModelSim installed: $(type vsim 2> /dev/null)"
+        SIM="vsim"
+    else 
+        echo "ModelSim not installed!"
+        exit 1
+    fi 
+fi
+
+if [ $TOOL_MODE == "vivado" ]; then
+    if $(hash vivado &> /dev/null); then
+      echo "Vivado installed: $(type vivado 2> /dev/null)"     
+      SIM="vivado"
+      else 
+        echo "Vivado not installed!"
+        exit 1
     fi
 fi
   

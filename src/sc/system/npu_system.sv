@@ -1,3 +1,32 @@
+//        Copyright 2019 NaplesPU
+//   
+//   	 
+//   Redistribution and use in source and binary forms, with or without modification,
+//   are permitted provided that the following conditions are met:
+//   
+//   1. Redistributions of source code must retain the above copyright notice,
+//      this list of conditions and the following disclaimer.
+//   
+//   2. Redistributions in binary form must reproduce the above copyright notice,
+//      this list of conditions and the following disclaimer in the documentation
+//      and/or other materials provided with the distribution.
+//   
+//   3. Neither the name of the copyright holder nor the names of its contributors
+//      may be used to endorse or promote products derived from this software
+//      without specific prior written permission.
+//   
+//      
+//   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+//   ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+//   WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+//   IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+//   INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+//   BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+//   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+//   LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+//   OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+//   OF THE POSSIBILITY OF SUCH DAMAGE.
+
 `timescale 1ns / 1ps
 `include "npu_user_defines.sv"
 `include "npu_defines.sv"
@@ -6,6 +35,8 @@
 `include "npu_message_service_defines.sv"
 `include "npu_synchronization_defines.sv"
 `include "npu_debug_log.sv"
+
+// Single-cored version of the NPU system.
 
 module npu_system #(
 		parameter ADDRESS_WIDTH = 32,
@@ -205,64 +236,6 @@ module npu_system #(
 //  -- UART Controller and Host Interface Unit
 //  -----------------------------------------------------------------------
 
-//	h2c_control_unit # (
-//		.ITEM_w ( ITEM_w )
-//	)
-//	h2c_control_unit (
-//		.clk                   ( clk                   ) ,
-//		.reset                 ( reset                 ),
-//		.ext_freeze            ( ext_freeze            ),
-//		.resume                ( resume                ),
-//		.job_terminated        ( 1'b0                  ),
-//		//Interface to UART Control Unit
-//		.item_data_i           ( item_data_i           ), //Input: items from outside
-//		.item_valid_i          ( item_valid_i          ), //Input: valid signal associated with item_data_i port
-//		.item_avail_o          ( item_avail_o          ), //Output: avail signal to input port item_data_i
-//		.item_data_o           ( item_data_o           ), //Output: items to outside
-//		.item_valid_o          ( item_valid_o          ), //Output: valid signal associated with item_data_o port
-//		.item_avail_i          ( item_avail_i          ), //Input: avail signal to ouput port item_data_o
-//		//Interface To NaplesPU for boot
-//		.hi_thread_en          ( hi_thread_en          ),
-//		.hi_job_valid          ( hi_job_valid          ),
-//		.hi_job_pc             ( hi_job_pc             ),
-//		.hi_job_thread_id      ( hi_job_thread_id      ),
-//		.hi_read_cr_valid      ( hi_read_cr_valid      ),
-//		.hi_write_cr_valid     ( hi_write_cr_valid     ),
-//		.hi_read_cr_request    ( hi_read_cr_request    ),
-//		.hi_write_cr_data      ( hi_write_cr_data      ),
-//		.cr_response           ( cr_response           ),
-//		//From Host Debug
-//		.dsu_enable            ( dsu_enable            ),
-//		.dsu_single_step       ( dsu_single_step       ),
-//		.dsu_breakpoint        ( dsu_breakpoint        ),
-//		.dsu_breakpoint_enable ( dsu_breakpoint_enable ),
-//		.dsu_thread_selection  ( dsu_thread_selection  ),
-//		.dsu_thread_id         ( dsu_thread_id         ),
-//		.dsu_en_vector         ( dsu_en_vector         ),
-//		.dsu_en_scalar         ( dsu_en_scalar         ),
-//		.dsu_load_shift_reg    ( dsu_load_shift_reg    ),
-//		.dsu_start_shift       ( dsu_start_shift       ),
-//		.dsu_reg_addr          ( dsu_reg_addr          ),
-//		.dsu_write_scalar      ( dsu_write_scalar      ),
-//		.dsu_write_vector      ( dsu_write_vector      ),
-//		.dsu_serial_reg_in     ( dsu_serial_reg_in     ),
-//		//To Host Debug
-//		.dsu_bp_instruction    ( dsu_bp_instruction    ),
-//		.dsu_bp_thread_id      ( dsu_bp_thread_id      ),
-//		.dsu_serial_reg_out    ( dsu_serial_reg_out    ),
-//		.dsu_stop_shift        ( dsu_stop_shift        ),
-//		.dsu_hit_breakpoint    ( dsu_hit_breakpoint    ),
-//
-//		.h2c_snoop_valid_o     ( h2c_snoop_valid_o     ),
-//		.h2c_snoop_request_o   ( h2c_snoop_request_o   ),
-//		.h2c_snoop_addr_o      ( h2c_snoop_addr_o      ),
-//		.cl_valid_i            ( cl_valid_o            ),
-//		.cl_req_data_i         ( cl_req_data_o         ),
-//		.cl_req_id_i           ( cl_req_id_o           ),
-//		.cl_req_is_write_i     ( cl_req_is_write_o     ),
-//		.cl_req_is_read_i      ( cl_req_is_read_o      )
-//	);
-
 	npu_item_interface u_npu_item_interface (
 		.clk                   ( clk                   ),
 		.reset                 ( reset                 ),
@@ -312,6 +285,7 @@ module npu_system #(
 //  -- Core Logger
 //  -----------------------------------------------------------------------
 
+    // Output signals not connected, used only in simulation.
 	npu_core_logger #(
 		.DATA_WIDTH( `CACHE_LINE_WIDTH ),
 		.ADDR_WIDTH( `ADDRESS_SIZE     )

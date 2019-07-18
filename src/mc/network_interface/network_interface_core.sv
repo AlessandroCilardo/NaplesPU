@@ -1,15 +1,44 @@
+//        Copyright 2019 NaplesPU
+//   
+//   	 
+//   Redistribution and use in source and binary forms, with or without modification,
+//   are permitted provided that the following conditions are met:
+//   
+//   1. Redistributions of source code must retain the above copyright notice,
+//      this list of conditions and the following disclaimer.
+//   
+//   2. Redistributions in binary form must reproduce the above copyright notice,
+//      this list of conditions and the following disclaimer in the documentation
+//      and/or other materials provided with the distribution.
+//   
+//   3. Neither the name of the copyright holder nor the names of its contributors
+//      may be used to endorse or promote products derived from this software
+//      without specific prior written permission.
+//   
+//      
+//   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+//   ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+//   WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+//   IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+//   INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+//   BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+//   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+//   LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+//   OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+//   OF THE POSSIBILITY OF SUCH DAMAGE.
+
 `timescale 1ns / 1ps
 `include "npu_network_defines.sv"
 `include "npu_coherence_defines.sv"
 `include "npu_message_service_defines.sv"
 
 /*
- * The Network Interface is the "glue" that merge all the component inside a tile that want to communicate with other tile in the NoC.
- * It has several interface with the element inside the tile and an interface with the router.
+ * The Network Interface links all the component in a tile that require to communicate with other elements in the NoC.
+ * It has several interfaces with the element inside the tile and an interface with the router.
  * Basically, it has to convert a packet from the tile into flit injected in to the network and viceversa.
  * In order to avoid deadlock, four different virtual network are used: request, forwaded request, response and service network.
  *
- * The interface to the tile communicate with directory controller, cache controller and service unit (boot).
+ * The interface to the tile communicates with directory controller, cache controller and service unit (boot).
  * The units use the VN in this way:
  *
  *              SERVN -----> BOOT ----> SERVN
@@ -20,8 +49,10 @@
  *                       |        |
  *                       |-> DC  -|---> FWDN
  *
- * The unit is divided in two parts: 1- TO router, in which the vn_core2net units buffer and convert the packet in flit;
- *  2- FROM router, in which the vn_net2core units buffer and convert the flit in packet.
+ * The unit is divided in two parts: 
+ *  1 - TO router, in which the vn_core2net units buffer and convert the packet in flit;
+ *  2 - FROM router, in which the vn_net2core units buffer and convert the flit in packet.
+ * 
  * These two units support the multicast, sending k times a packet in unicast as many as the destinations are.
  *
  * The vn_net2core units should be four as well as vn_core2net units, but the response network is linked with the DC and CC at the same time.
@@ -29,7 +60,6 @@
  * two different output port - so an output arbiter is useless, the two vn_core2net response units, firstly, has to compete among them and,
  * secondly, among all the VN.
  *
- * Note that packet_body_size is linked with the flit_numb, but we prefer to calculate them separately. (FILT_NUM = ceil(PACKET_BODY/FLIT_PAYLOAD) )
  */
 
 module network_interface_core # (
@@ -41,11 +71,11 @@ module network_interface_core # (
 		input                                              enable,
 		/*SERVICE MESSAGE*/
 		//Core to Net
-		input  service_message_t                           c2n_mes_service,                      // messaggio service dal core
+		input  service_message_t                           c2n_mes_service,                      
 		input                                              c2n_mes_service_valid,
 		input                                              c2n_mes_service_has_data,
 		input  logic                 [`TILE_COUNT - 1 : 0] c2n_mes_service_destinations_valid,
-		output logic                                       ni_c2n_mes_service_network_available, //disponibilit� da parte della NI a ricevere un messaggio
+		output logic                                       ni_c2n_mes_service_network_available, 
 
 		//Net to Core
 		output service_message_t     ni_n2c_mes_service,
@@ -146,18 +176,18 @@ module network_interface_core # (
 
 	assign response_pending_tmp = { response_in[CC_ID].vn_packet_pending, response_in[DC_ID].vn_packet_pending };
 
-	// XXX Beware in case of multi-core, the requestor number is the number of core per tile!
+	// Beware in case of multi-core, the requestor number is the number of core per tile!
 	// Dato che in uscita non posso mischiare le richieste verso lo stesso VC, devo usare un grant-hold arbiter
 	// in modo che venga inviato un intero pacchetto prima che possa essere interrotto da altri
-	grant_hold_rr_arbiter #(
-		.NUM_REQUESTERS( 2 )
+	grant_hold_round_robin_arbiter #(
+		.SIZE( 2 )
 	)
 	response_vn_rr_arbiter (
-		.clk      ( clk                  ),
-		.reset    ( reset                ),
-		.request  ( response_pending_tmp ),
-		.hold_in  ( response_pending_tmp ),
-		.grant_oh ( response_vn_grant_oh )
+		.clk         ( clk                  ),
+		.reset       ( reset                ),
+		.requests    ( response_pending_tmp ),
+		.hold_in     ( response_pending_tmp ),
+		.decision_oh ( response_vn_grant_oh )
 	);
 
 	assign vn_packet_pending[ VC1 ] = |response_vn_grant_oh ;
@@ -174,18 +204,16 @@ module network_interface_core # (
 
 	assign forward_pending_tmp = {forward_in[CC_ID].vn_packet_pending, forward_in[DC_ID].vn_packet_pending} ;
 
-	// XXX Beware in case of multi-core, the requestor number is the number of core per tile!
-	// Dato che in uscita non posso mischiare le richieste verso lo stesso VC, devo usare un grant-hold arbiter
-	// in modo che venga inviato un intero pacchetto prima che possa essere interrotto da altri
-	grant_hold_rr_arbiter #(
-		.NUM_REQUESTERS( 2 )
+	// Beware in case of multi-core, the requestor number is the number of core per tile!
+	grant_hold_round_robin_arbiter #(
+		.SIZE( 2 )
 	)
 	forward_vn_rr_arbiter (
-		.clk      ( clk                  ),
-		.reset    ( reset                ),
-		.request  ( forward_pending_tmp ),
-		.hold_in  ( forward_pending_tmp ),
-		.grant_oh ( forward_vn_grant_oh )
+		.clk         ( clk                  ),
+		.reset       ( reset                ),
+		.requests    ( forward_pending_tmp ),
+		.hold_in     ( forward_pending_tmp ),
+		.decision_oh ( forward_vn_grant_oh )
 	);
 
 	assign vn_packet_pending[VC2]   = |forward_vn_grant_oh ;
@@ -204,15 +232,15 @@ module network_interface_core # (
 			vn_packet_pending[ VC1 ] & ~router_credit[VC1],
 			vn_packet_pending[ VC0 ] & ~router_credit[VC0]};
 
-	rr_arbiter # (
-		.NUM_REQUESTERS ( `VC_PER_PORT )
+	round_robin_arbiter # (
+		.SIZE ( `VC_PER_PORT )
 	)
-	ni_request_rr_arbiter (
-		.clk        ( clk          ),
-		.reset      ( reset        ),
-		.request    ( vno_requests ),
-		.update_lru ( 1'b1         ),
-		.grant_oh   ( vno_granted  )
+	ni_request_round_robin_arbiter (
+		.clk         ( clk          ),
+		.reset       ( reset        ),
+		.en          ( 1'b1         ),
+		.requests    ( vno_requests ),
+		.decision_oh ( vno_granted  )
 	) ;
 
 	oh_to_idx # (
@@ -230,8 +258,6 @@ module network_interface_core # (
 //  -----------------------------------------------------------------------
 //  -- Network Interface - TO Router
 //  -----------------------------------------------------------------------
-
-	// Nota: se DEST_OH == TRUE, allora DEST_NUMB = TILE_COUNT
 
 	// --- Request Virtual Network VC0 --- //
 
