@@ -1,15 +1,17 @@
-The NaplesPU (NPU) manycore is a parametrizable regular mesh Network on Chip (NoC) of configurable tile. Each NPU tile has the same basic components, it provides a configrable GPU-like open-source softcore meant to be used as a configurable FPGA overlay. This HPC-oriented accelerator merges the SIMT paradigm with vector processor model. Futhermore, each tile has a Cache Controller and a Directory Controller, those components handle data coherence between different cores in different tiles. On top of the customized hardware core, we are also developing a NPU compiler backend relying on the LLVM infrastructure.
 
-The core is based on a RISC in-order pipeline. Its control unit is intentionally kept lightweight. The architecture masks memory and operation latencies by heavily relying on hardware multithreading. By ensuring a light control logic, the core can devote most of its resources for accelerating computing in highly data-parallel kernels. In the hardware multithreading \nuplus architecture, each hardware thread has its own PC, register file, and control registers. The number of threads is user configurable. A NPU hardware thread is equivalent to a wavefront in the AMD terminology and a CUDA warp in the NVIDIA terminology. The processor uses a deep pipeline to improve clock speed.
+NaplesPU, or NPU, is a comprehensive open-source manycore accelerator, encompassing all the architecture layers from the compute core up to the on-chip interconnect, the coherence memory hierarchy, and the compilation toolchain.
+Entirely written in System Verilog HDL, NaplesPU exploits the three forms of parallelism that you normally find in modern compute architectures, particularly in heterogeneous accelerators such as GPU devices: vector parallelism, hardware multithreading, and manycore organization. Equipped with a complete LLVM-based compiler targeting the NaplesPU vector ISA, the NPU open-source project will let you experiment with all of the flavors of today’s manycore technologies.
+
+The NPU manycore architecture is based on a parameterizable mesh of configurable tiles connected through a Network on Chip (NoC). Each tile has a Cache Controller and a Directory Controller, handling data coherence between different cores in different tiles. The compute core is based on a vector pipeline featuring a lightweight control unit, so as to devote most of the hardware resources to the acceleration of data-parallel kernels. Memory operations and long-latency instructions are masked by exploiting hardware multithreading. Each hardware thread (roughly equivalent to a wavefront in the OpenCL terminology or a CUDA warp in the NVIDIA terminology) has its own PC, register file, and control registers. The number of threads in the NaplesPU system is user-configurable.
 
 
 -- Getting started -- 
 
-This section shows how to approach with NPU project for simulating or implementing a kernel for NPU architecture. Kernel means a complex application such as matrix multiplication, transpose of a matrix or similar that is written in a high-level programming language, for example, C/C++.
+This section shows how to get familiar with the NPU project and setup your environment for implementing and simulating a kernel for the NPU architecture. The work kernel refers here to a software application such as matrix multiplication, matrix transpose, etc., written in a high-level programming language, for example, C/C++.
 
 - Required software
 
-Simulation or implementation of any kernel relies on the following dependencies:
+Implementation and simulation of any kernel rely on the following dependencies:
 
     Git
     Xilinx Vivado 2018.2 or ModelSim (e.g. Questa Sim-64 vsim 10.6c_1)
@@ -17,7 +19,7 @@ Simulation or implementation of any kernel relies on the following dependencies:
 
 - Building process
 
-The first step is to install a toolchain. Please refer to toolchain/README.
+The first step is to install the toolchain. Please refer to toolchain/README.
 
 The following folders are used in simulation:
 
@@ -26,11 +28,11 @@ The following folders are used in simulation:
 
 - Simulate a kernel
 
-Three different ways:
+There are three different options for that:
 
     1 - starting test.sh script
-    2 - starting setup_project.sh from the root folder of the repository, it uses Vivado;
-    3 - starting simulate.sh from the root folder of the repository, it uses ModelSim.
+    2 - starting setup_project.sh from the root folder of the repository; it uses Vivado;
+    3 - starting simulate.sh from the root folder of the repository; it uses ModelSim.
 
 First of all, source Vivado or ModelSim in the shell. In Ubuntu Linux environment, e.g. if the simulator is Vivado, run the following command:
 
@@ -40,7 +42,7 @@ where XX depends on the installed version of Vivado (32 o 64 bit).
 
 1 - test.sh script
 
-Type following command in the nuplus/tools folder:
+Type the following command in the tools folder:
 
     $ ./test.sh [option]
 
@@ -51,13 +53,13 @@ Options are:
     -cn, --core-numb=VALUE specify the core number, default: 1
     -tn, --thread-numb=VALUE specify the thread number, default: 8
 
-This script starts kernels defined in an array in the script. The test.sh script first compile kernels and then runs them on both NPU and x86 architecture. Once the simulation is terminated, for each kernel, results of both execution are compared by a Python script for verifying the correctness of results.
+This script launches the kernels defined in an array in the script. The test.sh script first compiles the kernels and then runs them on both NPU and x86 architecture. Once the simulation is terminated, for each kernel, the results of the two executions are compared by a Python script for verifying their correctness.
 
-In folder tools, a log file is generated, called cosim.log, where are stored all information about simulation.
+In the tools folder, a log file is generated, called cosim.log, where all information about simulation is stored.
 
 2 - setup_project.sh script
 
-Type following command in the nuplus folder:
+Type the following command in the NPU folder:
 
     $ tools/vivado/setup_project.sh [option]
 
@@ -70,17 +72,15 @@ Options are:
     -t, --thread-mask=VALUE specify the thread activation mask, default FF
     -m, --mode=gui or batch specify the tool mode, it can run in either gui or batch mode, default: gui
 
-This script starts the kernel specified in the command. The kernel has to be located in the software/kernels/ folder, and has to be compiled first running make. Simulation is performed by Vivado:
+This script launches the kernel specified in the command. The kernel has to be located in the software/kernels/ folder, and has to be compiled first by running make. Simulation is performed by Vivado:
 
     tools/vivado/setup_project.sh -k mmsc -c 3 -t $(( 16#F )) -m gui
 
-About the parameters:
-
-The third (-c) is a one-hot mask that states which core are active: 3 is (11)2, hence Core 0 and 1. The thread mask parameter (-t) stores a one-hot mask that states which thread are active in each core: F is (00001111)2 so 4 threads active. The -m option sets the tool mode.
+The third parameter (-c) is a one-hot mask that indicates which cores are active: 3 is (11) in binary form, so it activates to Core 0 and 1. The thread mask parameter (-t) stores a one-hot mask that indicates which threads are active in each core: F is (00001111) in binary form so 4 threads active. The -m option sets the tool mode.
 
 3 - simulate.sh script
 
-Type following command in the nuplus root folder:
+Type the following command in the NPU root folder:
 
     $ tools/modelsim/simulate.sh [option]
 
