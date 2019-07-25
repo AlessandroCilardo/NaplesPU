@@ -307,7 +307,7 @@ module instruction_scheduler #(
 				if ( fp_add_issued[thread_scheduled_id] )
 					fp_pending_queue <= {1'b0,fp_pending_queue[31 : `FP_ADD_LATENCY],1'b1, fp_pending_queue[`FP_ADD_LATENCY-2 : 1]};
 				else if ( fp_mul_issued[thread_scheduled_id] )
-					fp_pending_queue <= {1'b0,fp_pending_queue[31 : `FP_MULT_LATENCY],1'b1, fp_pending_queue[`FP_MULT_LATENCY-2 : 1]};
+					fp_pending_queue <= {1'b0,fp_pending_queue[31 : `FP_MULT_LATENCY],1'b1};
 				else if ( fp_div_issued[thread_scheduled_id] )
 					fp_pending_queue <= {1'b0,fp_pending_queue[31 : 17],1'b1, fp_pending_queue[15 : 1]};
 				else if ( fp_itof_issued[thread_scheduled_id] )

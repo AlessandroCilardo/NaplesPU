@@ -105,6 +105,11 @@
 		`define DISPLAY_IO_FILE {`PROJECT_PATH, "simulation_log/", `KERNEL_NAME, "/display_io.txt"}
 	`endif
 
+	`ifdef DISPLAY_FPU
+	        `define DISPLAY_FPU_VAR `TOP.fpu_file
+		`define DISPLAY_FPU_FILE {`PROJECT_PATH, "simulation_log/", `KERNEL_NAME, "/display_fpu.txt"}
+	`endif
+
 `endif
 
 `ifdef DISPLAY_COHERENCE

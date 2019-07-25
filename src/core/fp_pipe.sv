@@ -30,6 +30,7 @@
 `timescale 1ns / 1ps
 `include "npu_defines.sv"
 `include "npu_user_defines.sv"
+`include "npu_debug_log.sv"
 
 /*
  * Floating Point Unit (FPU). The FPU supports single-precision FP operations according to 
@@ -352,16 +353,14 @@ module fp_pipe #(
 
 			if( ADDER_FP_INST == 1 ) begin
 				fp_addsub u_fp_addsub (
-					.clk    ( clk                                   ),
-					.rst    ( reset                                 ),
+					.clk    ( clk                                              ),
+					.rst    ( reset                                            ),
 
-					.do_fadd( is_add & opf_fecthed_mask[hw_lane_id] ),
-					.do_fsub( is_sub & opf_fecthed_mask[hw_lane_id] ),
-					.a      ( op0_add[hw_lane_id]                   ),
-					.b      ( op1_add[hw_lane_id]                   ),
+					.enable ( (is_add | is_sub) & opf_fecthed_mask[hw_lane_id] ),
+					.op0    ( op0_add[hw_lane_id]                              ),
+					.op1    ( op1_add_sub                                      ),
 
-					.q      ( res_add[hw_lane_id]                   ),
-					.valid  (                                       )
+					.res    ( res_add[hw_lane_id]                              )
 				);
 			end else begin
 				always_ff @( posedge clk )
@@ -374,12 +373,11 @@ module fp_pipe #(
 					.clk    ( clk                                   ),
 					.rst    ( reset                                 ),
 
-					.do_fmul( is_mul & opf_fecthed_mask[hw_lane_id] ),
-					.a      ( op0_mult[hw_lane_id]                  ),
-					.b      ( op1_mult[hw_lane_id]                  ),
+					.enable ( is_mul & opf_fecthed_mask[hw_lane_id] ),
+					.op0    ( op0_mult[hw_lane_id]                  ),
+					.op1    ( op1_mult[hw_lane_id]                  ),
 
-					.q      ( res_mult[hw_lane_id]                  ),
-					.valid  (                                       )
+					.res    ( res_mult[hw_lane_id]                  )
 				);
 			end else begin
 				always_ff @( posedge clk )
@@ -392,12 +390,12 @@ module fp_pipe #(
 					.DATA_WIDTH( FP_DATA_WIDTH )
 				)
 				u_fp_div (
-					.clk   ( clk                 ),
-					.rst   ( reset               ),
-					.enable( enable              ),
-					.op0   ( op0_div[hw_lane_id] ),
-					.op1   ( op1_div[hw_lane_id] ),
-					.res   ( res_div[hw_lane_id] )
+					.clk   ( clk                                   ),
+					.rst   ( reset                                 ),
+					.enable( is_div & opf_fecthed_mask[hw_lane_id] ),
+					.op0   ( op0_div[hw_lane_id]                   ),
+					.op1   ( op1_div[hw_lane_id]                   ),
+					.res   ( res_div[hw_lane_id]                   )
 				);
 			end else begin
 				always_ff @( posedge clk )
@@ -704,5 +702,21 @@ module fp_pipe #(
 		fpu_inst_scheduled <= pending_queue[0].instruction_decoded;
 		fpu_fecthed_mask   <= pending_queue[0].fetched_mask;
 	end
+
+	// Check operands and result are valid
+`ifdef SIMULATION
+        always_ff @ ( posedge clk ) begin
+            if ( ~reset & is_fpu ) begin
+                assert ( !( opf_fetched_op0 === {( `REGISTER_SIZE * `HW_LANE ){1'bX}} ) )
+                else $error( "[Time %t] [FP Pipe]: Operand 0 error! \t PC: %h \tTHREAD: %h", $time( ), opf_inst_scheduled.pc, opf_inst_scheduled.thread_id );
+                assert ( !( opf_fetched_op1 === {( `REGISTER_SIZE * `HW_LANE ){1'bX}} ) )
+                else $error( "[Time %t] [FP Pipe]: Operand 1 error! \t PC: %h \tTHREAD: %h", $time( ), opf_inst_scheduled.pc, opf_inst_scheduled.thread_id );
+            end
+
+            if ( ~reset & fpu_valid )
+                assert ( !( fpu_result_sp === {( `REGISTER_SIZE * `HW_LANE ){1'bX}} ) )
+                else $error( "[Time %t] [FP Pipe]: Result error! \t PC: %h \tTHREAD: %h", $time( ), fpu_inst_scheduled.pc, fpu_inst_scheduled.thread_id );
+        end
+`endif
 
 endmodule
