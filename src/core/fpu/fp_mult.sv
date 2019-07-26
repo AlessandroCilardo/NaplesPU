@@ -28,7 +28,7 @@
 //   OF THE POSSIBILITY OF SUCH DAMAGE.
 
 `timescale 1ns / 1ps
-module fp_div #(
+module fp_mult #(
 		parameter DATA_WIDTH = 32 )
 	(
 		input  logic                      clk,
@@ -41,17 +41,17 @@ module fp_div #(
 
 	logic [DATA_WIDTH + 1 : 0] op0_fpc, op1_fpc, res_fpc;
 
-    logic op_ce;
-    logic [`FP_DIV_LATENCY-1 : 1] shift_ce, shift_ce_next;
+	logic op_ce;
+	logic [`FP_MULT_LATENCY-1 : 1] shift_ce, shift_ce_next;
 
-    assign op_ce = enable | shift_ce[1];
-    assign shift_ce_next = shift_ce >> 1;
+	assign op_ce = enable | shift_ce[1];
+	assign shift_ce_next = shift_ce >> 1;
 
-    always_ff @(posedge clk) begin
-       if (enable)
-           shift_ce = '1;
-       else
-           shift_ce = shift_ce_next;
+	always_ff @(posedge clk) begin
+	   if (enable)
+	       shift_ce = '1;
+	   else
+	       shift_ce = shift_ce_next;
     end
 
 	InputIEEE_8_23_to_8_23 u_conv_op0 (
@@ -70,7 +70,7 @@ module fp_div #(
 		.R   ( op1_fpc )
 	);
 
-	FPDiv_8_23 u_FPDiv (
+	FPMult_8_23_8_23_8_23_F270_uid28 u_FPMult (
 		.clk ( clk     ),
 		.rst ( rst     ),
 		.ce  ( op_ce   ),

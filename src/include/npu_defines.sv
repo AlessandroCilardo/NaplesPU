@@ -444,7 +444,7 @@ typedef struct packed {
 `define IEEE754_DP_MAN_WIDTH    52
 
 `define FP_ADD_LATENCY          5
-`define FP_MULT_LATENCY         4
+`define FP_MULT_LATENCY         2
 `define FP_FTOI_LATENCY         4
 `define FP_ITOF_LATENCY         6
 

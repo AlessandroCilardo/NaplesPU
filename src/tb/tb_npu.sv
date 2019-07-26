@@ -526,4 +526,10 @@ module tb_npu #(
 	final $fclose( io_file );
 `endif
 
+`ifdef DISPLAY_FPU
+	int fpu_file;
+	initial fpu_file = $fopen( `DISPLAY_FPU_FILE, "w" );
+	final $fclose( fpu_file );
+`endif
+
 endmodule

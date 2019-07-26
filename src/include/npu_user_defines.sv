@@ -123,6 +123,7 @@
 	`define DISPLAY_SYNCH_CORE
 	//`define DISPLAY_IO
 	//`define COHERENCE_INJECTION
+        //`define DISPLAY_FPU
 
 `endif
 
