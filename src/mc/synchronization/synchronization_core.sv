@@ -218,9 +218,9 @@ module synchronization_core # (
 	always_ff @ ( posedge clk )
 		if ( ~reset ) begin
 			if ( ni_account_mess_valid )
-				$display( "[Time %t] [TILE %2d] [Synch Master] Account received. \tBarrier ID: %d", $time( ), TILE_ID, ni_account_mess.id_barrier );
+				$display( "[Time %t] [TILE %2d] [Synch Master] Account received.   \t Barrier ID: %d", $time( ), TILE_ID, ni_account_mess.id_barrier );
 			if ( ss3_release_mess_valid )
-				$display( "[Time %t] [TILE %2d] [Synch Master] Release sent. \tBarrier ID: %d", $time( ), TILE_ID, ss3_release_mess.id_barrier );
+				$display( "[Time %t] [TILE %2d] [Synch Master] Release sent.       \t Barrier ID: %d", $time( ), TILE_ID, ss3_release_mess.id_barrier );
 		end
 `endif
 

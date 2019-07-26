@@ -86,12 +86,23 @@ unsigned short icrc(unsigned short crc, unsigned long len,
   static uchar it[16]={0,8,4,12,2,10,6,14,1,9,5,13,3,11,7,15};
 
   if (!init) {
+#ifdef NPU_ACCELERATOR
+    // Only Thread 0 of Core 0 initializes data
+    if (CORE_ID == 0 && THREAD_ID == 0) {
+#endif
     init=1;
     for (j=0;j<=255;j++) {
       icrctb[j]=icrc1(j << 8,(uchar)0);
       rchr[j]=(uchar)(it[j & 0xF] << 4 | it[j >> 4]);
     }
+#ifdef NPU_ACCELERATOR
   }
+#endif
+  }
+#ifdef NPU_ACCELERATOR
+  // Initialization synchronization barrier
+  __builtin_npu_barrier(42, CORE_NUMB - 1);
+#endif
   if (jinit >= 0) cword=((uchar) jinit) | (((uchar) jinit) << 8);
   else if (jrev < 0)
     cword=rchr[HIBYTE(cword)] | rchr[LOBYTE(cword)] << 8;
@@ -132,6 +143,7 @@ int main(void)
         result[CORE_ID * 2] = i2;
         result[CORE_ID * 2 + 1] = i1;
     }
+    __builtin_npu_barrier(43, CORE_NUMB * THREAD_NUMB - 1);
 #else
     n=40;
     lin[n+1]=0;
@@ -153,7 +165,6 @@ int main(void)
       __builtin_npu_flush((int) &result[0]);
       __builtin_npu_write_control_reg(16, 12); // For cosimulation purpose
     }
-    __builtin_npu_barrier(42, CORE_NUMB * THREAD_NUMB - 1);
 
     return (int)&result[0];
 

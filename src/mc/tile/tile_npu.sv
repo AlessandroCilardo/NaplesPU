@@ -283,9 +283,9 @@ module tile_npu # (
 		.hi_job_pc                       ( hi_job_pc                           ),
 		.hi_job_thread_id                ( hi_job_thread_id                    ),
 		.hi_write_cr_data                (                                     ),
-		.hi_write_cr_valid               (                                     ),
+		.hi_write_cr_valid               ( 1'b0                                ),
 		.hi_read_cr_request              (                                     ),
-		.hi_read_cr_valid                (                                     ),
+		.hi_read_cr_valid                ( 1'b0                                ),
 		.cr_response                     (                                     ),
 		// DSU
 		.resume                          (                                     ),

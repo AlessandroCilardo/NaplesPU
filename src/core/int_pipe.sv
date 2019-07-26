@@ -91,7 +91,7 @@ module int_pipe #(
 	assign is_move_imm    = opf_inst_scheduled.is_movei;
 	assign is_compare     = opf_inst_scheduled.op_code >= CMPEQ && opf_inst_scheduled.op_code <= CMPLE_U ;
 	assign cmp_result     = ( opf_inst_scheduled.is_source0_vectorial || opf_inst_scheduled.is_source1_vectorial ) ?
-		lane_cmp_result : register_t'( lane_cmp_result[0] );
+		{16'b0, lane_cmp_result[15 : 0]} : register_t'( lane_cmp_result[0] );
 
 	genvar                        i;
 	generate

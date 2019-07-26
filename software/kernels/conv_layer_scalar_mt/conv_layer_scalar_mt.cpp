@@ -21,7 +21,7 @@ int main () {
 #endif
 
     conv_layer(matrix_output, CORE_ID, THREAD_ID);
-	__builtin_npu_barrier(42, CORE_NUMB * THREAD_NUMB - 1);
+	__builtin_npu_barrier(CORE_ID + 10, THREAD_NUMB - 1);
   
     if (THREAD_ID == 0 && CORE_ID == 0)
     {
@@ -30,7 +30,7 @@ int main () {
         }
         __builtin_npu_write_control_reg(IN_MATR_DIM * IN_MATR_DIM, 12); // For cosimulation purpose
     }
-    __builtin_npu_barrier(43, CORE_NUMB * THREAD_NUMB - 1);
+    __builtin_npu_barrier(CORE_ID + 100, THREAD_NUMB - 1);
 
     return (int)&matrix_output;
 #else

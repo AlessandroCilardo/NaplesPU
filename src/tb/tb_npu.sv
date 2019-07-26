@@ -427,7 +427,10 @@ module tb_npu #(
 
 		console_enable = 1'd0;
 		wait ( console_drained );
-		#1000 $finish( );
+        // The following waiting time ensures that thread 0 in core 0 stores
+        // output address and size into argv and argc registers. This is
+        // widely used in the test.sh script.
+		#300000 $finish( );
 	end
 
 	initial begin

@@ -29,7 +29,7 @@ int main()
 #endif
 
   conv_layer(matrix_input, kernel_input, matrix_output, CORE_ID, THREAD_ID);
-  __builtin_npu_barrier(42, CORE_NUMB * THREAD_NUMB - 1);
+  __builtin_npu_barrier(CORE_ID + 10, THREAD_NUMB - 1);
 
   vec16i32 shift_coeff_out = {15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14};
 
@@ -53,7 +53,7 @@ int main()
       __builtin_npu_flush((int)(&matrix_output[mout_rows]));
     __builtin_npu_write_control_reg(IN_MATR_DIM * IN_MATR_DIM, 12); // For cosimulation purpose
   }
-  __builtin_npu_barrier(43, CORE_NUMB * THREAD_NUMB - 1);
+  __builtin_npu_barrier(CORE_ID + 20, THREAD_NUMB - 1);
 
   return (int)&matrix_output;
 #else

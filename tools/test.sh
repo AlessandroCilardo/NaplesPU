@@ -163,7 +163,7 @@ logo
 # Kernels under test list
 # lud_float has rounding errors, the output diverges from 
 # the expected one.
-KERNELS=( barriertest mmsc mmsc_float mmsc_tiling crc dct_scalar ns ndes fir conv_layer_scalar_mt conv_layer_mvect_mt lud_scalar lud_float matrix_transpose marching_squares ) 
+KERNELS=( barriertest mmsc mmsc_float mmsc_tiling crc dct_scalar ns ndes fir conv_layer_scalar_mt conv_layer_mvect_mt lud_scalar lud_float matrix_transpose marching_squares vector_test) 
 
 # Checking the NPU toolchain installation
 if [ ! -e "$MANGO_ROOT/usr/local/llvm-npu" ]; then
