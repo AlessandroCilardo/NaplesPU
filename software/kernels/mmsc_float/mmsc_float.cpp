@@ -34,8 +34,6 @@ int main(){
     __builtin_npu_write_control_reg(N*N, 12); // For cosimulation purpose
   }
 
-  __builtin_npu_barrier(43, CORE_NUMB * THREAD_NUMB - 1);
-
   return (int)&C;
 #else
   bzero((void *) &C[0][0], N*N*sizeof(int));

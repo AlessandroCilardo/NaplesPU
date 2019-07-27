@@ -28,6 +28,9 @@
 //   OF THE POSSIBILITY OF SUCH DAMAGE.
 
 `timescale 1ns / 1ps
+
+`include "npu_defines.sv"
+
 module fp_mult #(
 		parameter DATA_WIDTH = 32 )
 	(

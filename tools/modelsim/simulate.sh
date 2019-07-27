@@ -91,9 +91,9 @@ vlog $COMPILE_FLAGS -sv "+incdir+../../src/include" "+incdir+../../src/include" 
 
 vcom -93 \
 "../../src/core/fpu/flopoco.vhdl" \
+"../../src/core/fpu/flopoco_add_mult.vhdl" \
 
 vlog $COMPILE_FLAGS "+incdir+../../src/include" "+incdir+../../src/include" \
-"../../src/core/fpu/fp_mul_pipeline.v" \
 "../../src/core/fpu/fp_addsub_pipeline.v" \
 
 vlog $COMPILE_FLAGS -sv "+incdir+../../src/include" "+incdir+../../src/include" \
@@ -116,16 +116,12 @@ vlog $COMPILE_FLAGS -sv "+incdir+../../src/include" "+incdir+../../src/include" 
 "../../src/core/core_interface.sv" \
 "../../src/core/fpu/fp_dp_fp2fix.sv" \
 "../../src/core/fpu/fp_dp_mult.sv" \
-
-vlog $COMPILE_FLAGS "+incdir+../../src/include" "+incdir+../../src/include" \
-"../../src/core/fpu/fp_addsub.v" \
+"../../src/core/fpu/fp_addsub.sv" \
 
 vlog $COMPILE_FLAGS -sv "+incdir+../../src/include" "+incdir+../../src/include" \
 "../../src/core/fpu/fp_dp_div.sv" \
 "../../src/core/fpu/fp_dp_addsub.sv" \
-
-vlog $COMPILE_FLAGS "+incdir+../../src/include" "+incdir+../../src/include" \
-"../../src/core/fpu/fp_mult.v" \
+"../../src/core/fpu/fp_mult.sv" \
 
 vlog $COMPILE_FLAGS -sv "+incdir+../../src/include" "+incdir+../../src/include" \
 "../../src/core/fpu/fp_ftoi.sv" \
